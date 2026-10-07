@@ -1,13 +1,18 @@
 [workspace]
 channels = ["https://conda.modular.com/max", "https://repo.prefix.dev/modular-community", "conda-forge"]
-name = "roboquant_mojo"
+name = "roboquant"
 platforms = ["osx-arm64"]
 version = "0.1.0"
 
 [tasks]
 main = "pixi run mojo run roboquant/main.mojo"
+preptest = "pixi run mojo precompile roboquant/ -o tests/roboquant.mojoc"
+test = "pixi run mojo tests/test_chart.mojo"
 
 [dependencies]
 mojo = ">=1.1.0,<2"
 decimo = ">=0.15.0,<0.17"
 morrow = ">=1.1.0,<2.0"
+python = "==3.14"
+matplotlib = ">=3.11.2,<4"
+numpy = ">=2.5.3,<3"

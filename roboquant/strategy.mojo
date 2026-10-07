@@ -1,5 +1,5 @@
-from asset import Asset
-from feed import Event
+from .asset import Asset
+from .feed import Event
 
 
 @fieldwise_init

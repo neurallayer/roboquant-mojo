@@ -1,5 +1,5 @@
-from asset import Asset
-from time import Timestamp, Timeframe
+from .asset import Asset
+from .time import Timestamp, Timeframe
 
 
 from std.random import random_float64, randn_float64, seed, random_ui64

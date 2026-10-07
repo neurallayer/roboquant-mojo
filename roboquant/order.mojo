@@ -1,8 +1,8 @@
-from asset import Asset
-from money import Amount
+from .asset import Asset
+from .money import Amount
 from std.os import abort
 from decimo import Decimal128, RoundingMode, ROUND_DOWN
-from time import Timestamp
+from .time import Timestamp
 
 
 comptime Size = Decimal128

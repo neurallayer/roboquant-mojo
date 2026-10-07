@@ -1,9 +1,11 @@
 
-from order import Order
-from account import Account, Position, Trade
-from money import Wallet, Amount, Currency
-from asset import Asset
-from feed import Event
+from .order import Order, TIF
+from .account import Account, Position, Trade
+from .money import Wallet, Amount, Currency
+from .asset import Asset
+from .feed import Event
+from .time import Timestamp, same_day, UTC
+from morrow import TimeZone
 
 
 trait Broker(Deinitable):
@@ -27,6 +29,7 @@ struct SimBroker(Broker):
     var base_currency: Currency
     var prices: Dict[Asset, Float64]
     var order_id: Int
+    var tz: TimeZone
 
     def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000)):
         self.orders = []
@@ -35,7 +38,8 @@ struct SimBroker(Broker):
         self.base_currency = deposit.currency
         self.prices = {}
         self.order_id = 0
-    
+        self.tz = UTC
+
     def __replace_order(mut self, new_order: Order) -> Bool:
         for idx, order in enumerate(self.orders):
             if order.id == new_order.id:
@@ -46,39 +50,18 @@ struct SimBroker(Broker):
     def place_orders(mut self, orders: List[Order]) -> None:
         for var order in orders:
             if not order.id:
+                # We are creating a new order, so we need to assign an ID and add it to the list of orders
                 assert not order.size.is_zero(), "New order cannot have size zero"
                 self.order_id += 1
                 order.id = String(self.order_id)
                 self.orders.append(order)
             else:
+                # We are updating an existing order, so we need to find it in the list of orders and replace it
                 var success = self.__replace_order(order)
                 if not success:
                     print("Unknown Order")
-    
-    def sync(mut self, event: Event) -> Account:
-        var trades = List[Trade]()
-        for item in event.prices:     
-            self.prices[item.get_asset()] = item.get_price()   
-     
-        var remaining_orders = List[Order]()
 
-        for order in self.orders:
-            assert order.id != None, "Should have order assigned"
-            var _price = self.prices.get(order.asset)
-            if _price:
-                var price = _price.value()
-                var p = self.positions.get(order.asset)
-                if p:
-                    p.value() += order.size
-                else:
-                    self.positions[order.asset] = Position(order.asset, order.size, price)
-                
-                self.cash.withdraw(order.value(price))
-                var trade = Trade(order.asset, order.size.copy(), price, 0.0)
-                trades.append(trade^)
-            else:
-                remaining_orders.append(order)
-
+    def __update_positions(mut self) -> None:
         for asset in self.positions:
             var price = self.prices.get(asset)
             if price:
@@ -86,8 +69,57 @@ struct SimBroker(Broker):
                     self.positions[asset].mkt_price = price.value()
                 except e:
                     print("error:", e)
- 
+
+
+    def __has_expired(self, order: Order, time: Timestamp) -> Bool:
+        if order.tif == TIF.DAY:
+            return not same_day(order.time.value(), time, self.tz)
+        elif order.tif == TIF.GTC:
+            return False
+        else:
+            print("Unknown TIF:", order.tif)
+            return False
+
+    def __process_orders(mut self, ref event: Event) -> List[Trade]:
+        var trades = List[Trade]()
+        var remaining_orders = List[Order]()
+  
+        for ref order in self.orders:
+            assert order.id != None, "Should have order-id assigned"
+            if order.remaining().is_zero():
+                continue
+            
+            if order.time is None:
+                order.time = event.time
+            elif self.__has_expired(order, event.time):
+                continue
+
+            var _price = event.get_price(order.asset)
+            if _price and order.is_executable(_price.value()):
+                var price = _price.value()
+                var pos = self.positions.get(order.asset, Position.empty(order.asset)) 
+                pos += order.size
+                self.positions[order.asset] = pos^
+                self.cash.withdraw(order.value(price))
+                var trade = Trade(order.asset, order.size, price, 0.0)
+                trades.append(trade^)
+            else:
+                remaining_orders.append(order)
+
         self.orders = remaining_orders^
+        return trades^
+    
+    def sync(mut self, event: Event) -> Account:
+        
+        
+        for item in event.prices:     
+            self.prices[item.get_asset()] = item.get_price()   
+     
+        var trades = self.__process_orders(event)
+
+        # update the market price of the positions based on the latest prices from the event
+        self.__update_positions()
+
         var bp = self.cash.convert_to(self.base_currency, event.time)
 
         var account = Account(

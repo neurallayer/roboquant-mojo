@@ -5,6 +5,7 @@
         "Forex",
         "iadd",
         "ohlcv",
+        "pyplot",
         "randn",
         "rmatmul"
     ]

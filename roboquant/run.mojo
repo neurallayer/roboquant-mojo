@@ -1,10 +1,10 @@
-from feed import PriceItem, RandomWalkFeed, Quote
-from broker import Broker
-from trader import Trader
-from time import Timeframe, TIME_MIN
-from account import Account
-from strategy import Strategy, Event
-from journal import Journal
+from .feed import PriceItem, RandomWalkFeed, Quote
+from .broker import Broker
+from .trader import Trader
+from .time import Timeframe, TIME_MIN
+from .account import Account
+from .strategy import Strategy, Event
+from .journal import Journal
 
 
 def run(

@@ -1,7 +1,6 @@
-from time import Timestamp
+from .time import Timestamp
 from std.os import abort
 
-@fieldwise_init
 struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     """
     Currency represents a specific currency used in financial transactions.
@@ -15,6 +14,10 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     comptime JPY = Self("JPY")
    
     var code: String 
+
+    @implicit
+    def __init__(out self, code: String):
+        self.code = code
 
     def write_to(self, mut writer: Some[Writer]):
         writer.write(self.code)

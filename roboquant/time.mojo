@@ -1,5 +1,7 @@
 from morrow import Morrow, TimeZone
 from std.os import abort
+from std.python import Python
+from std.python.numpy import copy_to_numpy_array
 
 comptime Timestamp = Float64
 comptime Timeline = List[Timestamp]
@@ -7,6 +9,17 @@ comptime UTC = TimeZone(0, "UTC")
 comptime TIME_MIN = from_iso("1900-01-01")
 comptime TIME_MAX = from_iso("2100-01-01")
 
+
+
+def same_day(t1: Timestamp, t2: Timestamp, tz: TimeZone = UTC) -> Bool:
+    """Check if two timestamps are on the same day given a timezone."""
+    try:
+        var dt1 = Morrow.fromtimestamp(t1).astimezone(tz)
+        var dt2 = Morrow.fromtimestamp(t2).astimezone(tz)
+        return dt1.year == dt2.year and dt1.month == dt2.month and dt1.day == dt2.day
+    except e:
+        print("Error in same_day:", e)
+        return False
 
 def timestamp_format(timestamp: Timestamp, format: String = "YYYY-MM-DD HH:mm:ss") -> String:
     """
@@ -72,7 +85,7 @@ struct Timeframe(ImplicitlyCopyable, Writable):
         Returns:
             List[Timeframe]: A list of n smaller Timeframes.
         """
-        
+
         var result:  List[Timeframe] = []
         var start = self.start
         var step = (self.end - self.start) / Float64(n)
@@ -97,3 +110,60 @@ struct Timeframe(ImplicitlyCopyable, Writable):
         var end = timestamp_format(self.end)
         writer.write("[", start, " - ", end, close_str)
  
+
+
+struct TimeSeries(Copyable, Writable):
+    """
+    A TimeSeries represents a series of data points indexed by time.
+    It is used to store and manage time-based data, such as financial market data.
+    Attributes:
+        times (Timeline): A list of timestamps representing the time points of the series.
+        values: A dictionary of values corresponding to each timestamp in the series.
+    """
+
+    var times: Timeline
+    var values: Dict[String, List[Float64]]
+
+    def __init__(out self, times: Timeline, values: Dict[String, List[Float64]]):
+        self.times = times.copy()
+        self.values = values.copy()
+
+    @staticmethod
+    def univariate(name: String, times: Timeline, values: List[Float64]) -> Self:
+        """
+        Create a univariate TimeSeries with a single variable.
+        Args:
+            name (String): The name of the variable.
+            times (Timeline): A list of timestamps representing the time points of the series.
+            values (List[Float64]): A list of values corresponding to each timestamp in the series.
+        Returns:
+            TimeSeries: A univariate TimeSeries instance.
+        """
+        var values_dict: Dict[String, List[Float64]] = {name: values.copy()}
+        return Self(times.copy(), values_dict)  
+  
+
+    def plot(self, metric: String) -> None:
+        """
+        Plot the TimeSeries data using a plotting library.
+        This method visualizes the time series data for analysis and interpretation.
+
+        It requires the matplotlib library and numpy to be installed in the environment.
+        """
+
+        var vals = self.values.get(metric)
+        if vals is None:
+            print("Metric not found in TimeSeries:", metric)
+            return  
+
+        try:
+            var pyplot = Python.import_module("matplotlib.pyplot")
+            var times_np = copy_to_numpy_array(self.times)
+            var values_np = copy_to_numpy_array(vals.value())
+            pyplot.plot(times_np, values_np, label=metric)
+            pyplot.title("Time Series Plot")
+            pyplot.legend()
+            pyplot.show()
+        except e:
+            print("Error in plotting TimeSeries:", e)
+

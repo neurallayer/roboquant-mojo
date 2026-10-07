@@ -1,7 +1,7 @@
-from money import Currency, Wallet, Amount
-from time import Timestamp, UTC, timestamp_format
-from asset import Asset
-from order import Order, Size
+from .money import Currency, Wallet, Amount
+from .time import Timestamp, UTC, timestamp_format
+from .asset import Asset
+from .order import Order, Size
 from std.os import abort
 from morrow import Morrow
 
@@ -9,6 +9,7 @@ from morrow import Morrow
 @fieldwise_init
 struct Trade(Copyable, Writable):
     """Represents a single executed trade with an asset, size, price, and realized PnL value.
+
     Attributes:
         asset (Asset): The underlying asset of the trade.
         size (Size): The size of the trade.

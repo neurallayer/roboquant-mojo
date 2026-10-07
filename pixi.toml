@@ -1,0 +1,13 @@
+[workspace]
+channels = ["https://conda.modular.com/max", "https://repo.prefix.dev/modular-community", "conda-forge"]
+name = "roboquant_mojo"
+platforms = ["osx-arm64"]
+version = "0.1.0"
+
+[tasks]
+main = "pixi run mojo run roboquant/main.mojo"
+
+[dependencies]
+mojo = ">=1.1.0,<2"
+decimo = ">=0.15.0,<0.17"
+morrow = ">=1.1.0,<2.0"

@@ -5,6 +5,7 @@ from .time import Timestamp, Timeframe
 from std.random import random_float64, randn_float64, seed, random_ui64
 from morrow import Morrow
 from std.os import abort
+from std.collections import Set
 
 
 
@@ -132,12 +133,28 @@ struct RandomWalkFeed:
 
     var events: List[Event[Bar]]
 
-    def __init__(out self, start: String, end: String, step_seconds: Float64):
-        self.events = Self.__gen_bar_feed(start, end, step_seconds)
+    def __init__(out self, start: String, end: String, step_seconds: Float64 = 3600.0 * 24.0, n_assets: Int = 10):
+        """
+        Initialize a RandomWalkFeed with the specified parameters.
+        Args:
+            start (String): The starting timestamp of the feed in ISO format.
+            end (String): The ending timestamp of the feed in ISO format.
+            step_seconds (Float64): The time interval between consecutive Events in seconds.
+            n_assets (Int): The number of unique assets to generate price data for.
+        """
+
+        self.events = Self.__gen_bar_feed(start, end, step_seconds, n_assets)
 
     def play(self) -> Span[Event[Bar], origin_of(self.events)]:
         """Return a Span of Events representing the generated feed."""
         return Span(self.events)
+
+    def assets(self) -> Set[Asset]:
+        var result = Set[Asset]()
+        for evt in self.events:
+            for price in evt.prices:
+                result.add(price.asset)
+        return result^
 
     def timeframe(self) -> Timeframe:
         """Return the timeframe of the generated feed, which is
@@ -153,20 +170,23 @@ struct RandomWalkFeed:
 
 
     @staticmethod
-    def __random_symbol() -> String:   
-        var symbol = String()
-        for _ in range(4):
-            var n = random_ui64(0,26)
-            symbol += chr(Int(n) + ord('A'))
-        return symbol
+    def __random_symbols(n: Int) -> Set[String]:  
+        var result = Set[String]()
+        while len(result) < n: 
+            var symbol = String()
+            for _ in range(4):
+                var n = random_ui64(0,25)
+                symbol += chr(Int(n) + ord('A'))
+            result.add(symbol)
+        return result^
 
     @staticmethod
-    def __gen_bar_feed(start: String, end: String, step_seconds: Float64) -> List[Event[Bar]]:
+    def __gen_bar_feed(start: String, end: String, step_seconds: Float64, n_assets: Int) -> List[Event[Bar]]:
         """Generate a test feed with randomized Bars."""
         try:
             seed(42)
-            var symbols = {Self.__random_symbol() for _ in range(20)}
-            var assets = [Asset.Stock(symbol) for symbol in symbols]
+            var symbols = Self.__random_symbols(n_assets)
+            var assets = {Asset.Stock(symbol) for symbol in symbols}
             var events: List[Event[Bar]] = []
             var prices = {asset:random_float64(100.0, 200.0) for asset in assets}
             var time = Morrow.fromisoformat(start).float_timestamp()

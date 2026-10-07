@@ -81,7 +81,7 @@ trait BarStrategy(Strategy):
         ...
 
 struct EMACrossOver(BarStrategy):
-    """Two different Exponential Moving Averages where a rating is generated
+    """Two different Exponential Moving Averages where a signal is generated
     if the one crosses the other moving overage.
     """
 

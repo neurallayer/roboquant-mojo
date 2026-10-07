@@ -289,16 +289,24 @@ Notes:
 
 ```text
 .
-├── pixi.toml              # dependencies & environment
+├── pixi.toml                # dependencies, environment & tasks
 ├── README.md
+├── test_event.mojo          # exploratory checks for feed events
+├── test_format.mojo         # exploratory checks for number formatting
 └── roboquant/
-    ├── time.mojo          # Timestamp, UTC, Timeframe
-    ├── money.mojo         # Currency, Amount, Wallet
-    ├── asset.mojo         # AssetType, Asset
-    ├── order.mojo         # Size, TIF, Order
-    ├── account.mojo       # Trade, Position, Account
-    ├── ...                # remaining
- 
+    ├── common.mojo          # shared helpers used by the other modules
+    ├── time.mojo            # Timestamp, UTC, Timeframe
+    ├── money.mojo           # Currency, Amount, Wallet
+    ├── asset.mojo           # AssetType, Asset
+    ├── order.mojo           # Size, TIF, Order
+    ├── account.mojo         # Trade, Position, Account
+    ├── feed.mojo            # Event, Bar, Quote, RandomWalkFeed
+    ├── strategy.mojo        # Signal, Strategy, BarStrategy, EMACrossOver
+    ├── trader.mojo          # Trader, FlexTrader
+    ├── broker.mojo          # Broker, SimBroker
+    ├── journal.mojo         # Journal, Printer
+    ├── run.mojo             # run() orchestration
+    └── main.mojo            # demo backtest + walk-forward simulation
 ```
 
 ## Testing
@@ -311,19 +319,32 @@ pixi run mojo run test_event.mojo
 pixi run mojo run test_format.mojo
 ```
 
+These are exploratory scripts that print their results rather than assertions,
+so they are meant to be read, not used as a pass/fail gate.
+
 ## Implementation status
 
-This is an early-stage port. Known gaps and `@TODO`s in the source:
+The engine is now complete for the synthetic end-to-end flow: a full-history
+backtest plus a walk-forward simulation both run to completion. The gaps that
+were previously tracked here are all resolved:
 
-- **FX conversion** — `Amount.convert_to` aborts with *"Conversion not yet
-  supported"*; `SimBroker` therefore assumes a single-currency book.
-- **`Bar` construction** — the OHLCV values are synthesized from a single open
-  price (marked `Dummy impl @TODO`).
-- **`Quote` volume** — `get_volume` indexes `ohlcv[4]` on an
-  `InlineArray[Float64, 4]` (out of bounds); needs fixing.
+- **FX conversion** — `Amount.convert_to` converts through the base currency and
+  `Wallet.convert_to` aggregates a multi-currency book.
+- **`Bar` construction** — OHLCV values are derived from the bar's own
+  open/high/low/close/volume instead of being copied from a single open price.
+- **`Quote` volume** — `get_volume` reads the quote's size field, so it no
+  longer indexes past the end of the price array.
 - **`Timeframe(start: String, end: String)`** — the string constructor assigns
-  `start` to both `start` and `end`.
-- **`common.mojo`** — currently empty; intended for shared definitions.
+  `start` and `end` independently.
+- **`common.mojo`** — holds the shared helpers (parsing, formatting, RNG) reused
+  by the other modules.
+
+Remaining work:
+
 - **Real data feeds & brokers** — only the synthetic `RandomWalkFeed` and
-  `SimBroker` exist today.
-- **No CI / test runner** — root-level files are exploratory, not assertions.
+  `SimBroker` exist today; adapters for live or historical market data and for
+  real brokers are still to come.
+- **No CI / test runner** — root-level files are exploratory, not assertions, so
+  regressions are not caught automatically.
+- **Benchmarks** — throughput is only reported by the `Printer` journal inside
+  `main.mojo`; there is no standalone benchmark harness yet.

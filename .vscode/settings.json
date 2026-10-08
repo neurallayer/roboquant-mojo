@@ -4,6 +4,7 @@
         "elif",
         "Forex",
         "iadd",
+        "numpy",
         "ohlcv",
         "pyplot",
         "randn",

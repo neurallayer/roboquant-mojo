@@ -6,7 +6,7 @@ version = "0.1.0"
 
 [tasks]
 build = "pixi run mojo precompile roboquant/ -o lib/roboquant.mojoc"
-chart = { cmd = "pixi run mojo -I lib tests/test_chart.mojo", depends-on = ["build"]}
+charts = { cmd = "pixi run mojo -I lib tests/test_chart.mojo", depends-on = ["build"]}
 backtest = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["build"]}
 
 

@@ -117,19 +117,22 @@ struct TimeSeries(Copyable, Writable):
     A TimeSeries represents a series of data points indexed by time.
     It is used to store and manage time-based data, such as financial market data.
     Attributes:
-        times (Timeline): A list of timestamps representing the time points of the series.
-        values: A dictionary of values corresponding to each timestamp in the series.
+        timeline (Timeline): A list of timestamps representing the time points of the series.
+        data: A dictionary of values corresponding to each timestamp in the series.
     """
 
-    var times: Timeline
-    var values: Dict[String, List[Float64]]
+    var timeline: Timeline
+    var data: Dict[String, List[Float64]]
 
-    def __init__(out self, times: Timeline, values: Dict[String, List[Float64]]):
-        self.times = times.copy()
-        self.values = values.copy()
+    def __init__(out self, timeline: Timeline, data: Dict[String, List[Float64]]):
+        self.timeline = timeline.copy()
+        self.data = data.copy()
+        var l = len(timeline)
+        for data in data.values():
+            assert len(data) == l, "different len" 
 
     @staticmethod
-    def univariate(name: String, times: Timeline, values: List[Float64]) -> Self:
+    def univariate(name: String, timeline: Timeline, data: List[Float64]) -> Self:
         """
         Create a univariate TimeSeries with a single variable.
         Args:
@@ -139,8 +142,8 @@ struct TimeSeries(Copyable, Writable):
         Returns:
             TimeSeries: A univariate TimeSeries instance.
         """
-        var values_dict: Dict[String, List[Float64]] = {name: values.copy()}
-        return Self(times.copy(), values_dict)  
+        var values_dict: Dict[String, List[Float64]] = {name: data.copy()}
+        return Self(timeline, values_dict)  
   
 
     def plot(self, metric: String) -> None:
@@ -151,17 +154,16 @@ struct TimeSeries(Copyable, Writable):
         It requires the matplotlib library and numpy to be installed in the environment.
         """
 
-        var vals = self.values.get(metric)
-        if vals is None:
+        var values = self.data.get(metric)
+        if values is None:
             print("Metric not found in TimeSeries:", metric)
             return  
 
         try:
             var pyplot = Python.import_module("matplotlib.pyplot")
-            var times_np = copy_to_numpy_array(self.times)
-            var values_np = copy_to_numpy_array(vals.value())
+            var times_np = copy_to_numpy_array(self.timeline)
+            var values_np = copy_to_numpy_array(values.value())
             pyplot.plot(times_np, values_np, label=metric)
-            pyplot.title("Time Series Plot")
             pyplot.legend()
             pyplot.show()
         except e:

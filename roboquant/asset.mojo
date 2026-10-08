@@ -14,12 +14,11 @@ struct AssetType(ImplicitlyCopyable, Writable, Equatable, Hashable):
 
     var value: Int 
 
-
 @fieldwise_init
 struct Asset(ImplicitlyCopyable, Writable, Deinitable, KeyElement):
     """
     The Asset struct represents a financial instrument that can be traded in the market.
-    It is uniquely identified by its symbol, which is a string representing the asset's ticker or identifier.
+    It is uniquely identified by only its symbol, which is a string representing the asset's ticker or identifier.
     The Asset struct also includes information about the currency in which the asset is denominated,
     the type of asset (e.g., stock, option, forex, crypto), and the contract size for trading purposes.
 
@@ -34,7 +33,7 @@ struct Asset(ImplicitlyCopyable, Writable, Deinitable, KeyElement):
     var currency: Currency
     var type: AssetType
     var contract_size: Size
-
+ 
     @staticmethod
     def Stock(symbol: String, currency: Currency = Currency.USD) -> Asset:
         """Create a new Stock with the provided symbol and currency."""

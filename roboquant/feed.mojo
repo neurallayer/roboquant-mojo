@@ -1,5 +1,5 @@
 from .asset import Asset
-from .time import Timestamp, Timeframe
+from .time import Timestamp, Timeframe, TimeSeries
 
 
 from std.random import random_float64, randn_float64, seed, random_ui64
@@ -46,25 +46,21 @@ struct Event[P: PriceItem](Copyable):
     It provides methods to retrieve the timestamp and access the price data for specific assets.
     """
 
-
     var time: Timestamp
     var prices: List[Self.P]
-    # var lookup: Dict[Asset, Self.P]
-
-    # def __init__(out self,time: Timestamp, prices: List[Self.P]):
-    #    self.time = time
-    #    self.prices = prices.copy()
-    #    self.lookup = {p.get_asset() : p.copy() for p in prices}
-
-
+    
     def get_price(self, asset:Asset, type: String = "DEFAULT") -> Optional[Float64]:
-        #if var p := self.lookup.get(asset):
-        #    return p.value().get_price(type)
-        #return None
         for ref price in self.prices:
             ref p = price.get_asset()
             if p == asset:
                 return price.get_price(type)
+        return None
+
+    def get_volume(self, asset:Asset, type: String = "DEFAULT") -> Optional[Float64]:
+        for ref price in self.prices:
+            ref p = price.get_asset()
+            if p == asset:
+                return price.get_volume(type)
         return None
 
 
@@ -98,18 +94,17 @@ struct Bar(PriceItem, Copyable, Writable):
 
 
 struct Quote(PriceItem):
-    """Represents a Quote price-item with an asset and a single price value."""
+    """Represents a Quote price-item with an asset and a ask-bid prices."""
 
     var asset: Asset
     var ohlcv: Array[Float64,4]
 
-    def __init__(out self, asset: Asset, ask: Float64=100.0):
+    def __init__(out self, asset: Asset, ask: Float64, ask_vol: Float64, bid: Float64, bid_vol: Float64):
         self.asset = asset
-        self.ohlcv = [ask,10_000,ask*0.99,10_000]
+        self.ohlcv = [ask,ask_vol, bid, bid_vol]
 
     def get_asset(self) -> Asset:
         return self.asset
-
 
     def get_price(self, price_type: String = "DEFAULT") -> Float64:
         if price_type == "ASK":
@@ -120,7 +115,12 @@ struct Quote(PriceItem):
             return (self.ohlcv[0] + self.ohlcv[2])/2.0
 
     def get_volume(self, volume_type: String = "DEFAULT") -> Float64:
-        return self.ohlcv[4]
+        if volume_type == "ASK":
+            return self.ohlcv[1]
+        elif volume_type == "BID":
+            return self.ohlcv[3]
+        else:
+            return (self.ohlcv[1] + self.ohlcv[3])/2.0
 
 
 @fieldwise_init
@@ -147,7 +147,7 @@ struct RandomWalkFeed:
 
     def play(self) -> Span[Event[Bar], origin_of(self.events)]:
         """Return a Span of Events representing the generated feed."""
-        return Span(self.events)
+        return Span[mut=False](self.events)
 
     def assets(self) -> Set[Asset]:
         var result = Set[Asset]()
@@ -169,6 +169,19 @@ struct RandomWalkFeed:
         return sum_bars
 
 
+    def to_timeseries(self, asset: Asset, price_type: String = "DEFAULT") -> TimeSeries: 
+        var l = len(self.events)
+        var tl = List[Timestamp](capacity=l)
+        var prices = List[Float64](capacity=l)
+        for evt in self.play():
+            for ref item in evt.prices:
+                if item.get_asset() == asset:
+                    tl.append(evt.time)
+                    prices.append(item.get_price(price_type))
+                    break;
+        return TimeSeries.univariate(asset.symbol, tl, prices)
+
+
     @staticmethod
     def __random_symbols(n: Int) -> Set[String]:  
         var result = Set[String]()
@@ -187,12 +200,14 @@ struct RandomWalkFeed:
             seed(42)
             var symbols = Self.__random_symbols(n_assets)
             var assets = {Asset.Stock(symbol) for symbol in symbols}
-            var events: List[Event[Bar]] = []
-            var prices = {asset:random_float64(100.0, 200.0) for asset in assets}
             var time = Morrow.fromisoformat(start).float_timestamp()
             var stop = Morrow.fromisoformat(end).float_timestamp()
+            var size = Int((stop - time) / step_seconds) + 1
+            var events = List[Event[Bar]](capacity=size)
+            var prices = {asset:random_float64(100.0, 200.0) for asset in assets}
+        
             while True:
-                var items: List[Bar] = []
+                var items = List[Bar](capacity=n_assets)
                 for asset in assets:
                     var price = prices[asset]
                     var bar = Bar(asset, price, price*1.01, price*0.99, price, 10_000)

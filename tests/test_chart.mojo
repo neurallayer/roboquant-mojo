@@ -11,7 +11,10 @@ from std.math import round
 
 def main() raises:
     var feed = RandomWalkFeed(start="2025-01-01",end="2026-01-01", step_seconds = 3600.0 * 24.0)
-    print(feed.assets())
+    var assets = List(feed.assets())
+    for asset in assets[0:3]:
+        var ts1 = feed.to_timeseries(asset)
+        ts1.plot(asset.symbol)
 
     var strategy = EMACrossOver()
     var trader = FlexTrader()
@@ -20,5 +23,5 @@ def main() raises:
 
     run(feed, strategy, trader, broker, journal)
     print("Performance:", round(journal.get_performance() * 100.0, 2), "%")
-    var ts = journal.to_timeseries()
-    ts.plot("equity")
+    var ts2 = journal.to_timeseries()
+    ts2.plot("equity")

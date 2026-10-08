@@ -5,11 +5,10 @@ platforms = ["osx-arm64"]
 version = "0.1.0"
 
 [tasks]
-main = "pixi run mojo run test/test_run.mojo"
-build = "pixi run mojo precompile roboquant/ -o tests/roboquant.mojoc"
-test = "pixi run mojo tests/test_chart.mojo"
+build = "pixi run mojo precompile roboquant/ -o lib/roboquant.mojoc"
+chart = { cmd = "pixi run mojo -I lib tests/test_chart.mojo", depends-on = ["build"]}
+backtest = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["build"]}
 
-all = { depends-on = ["build", "test"] }
 
 [dependencies]
 mojo = ">=1.1.0,<2"

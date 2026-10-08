@@ -8,5 +8,8 @@
         "pyplot",
         "randn",
         "rmatmul"
+    ],
+    "mojo.lsp.includeDirs": [
+        "lib"
     ]
 }

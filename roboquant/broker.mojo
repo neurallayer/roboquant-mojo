@@ -31,14 +31,14 @@ struct SimBroker(Broker):
     var order_id: Int
     var tz: TimeZone
 
-    def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000)):
+    def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), timezone: TimeZone = UTC):
         self.orders = []
         self.positions = {}
         self.cash = Wallet(deposit)
         self.base_currency = deposit.currency
         self.prices = {}
         self.order_id = 0
-        self.tz = UTC
+        self.tz = timezone
 
     def __replace_order(mut self, new_order: Order) -> Bool:
         for idx, order in enumerate(self.orders):
@@ -101,7 +101,7 @@ struct SimBroker(Broker):
                 pos += order.size
                 self.positions[order.asset] = pos^
                 self.cash.withdraw(order.value(price))
-                var trade = Trade(order.asset, order.size, price, 0.0)
+                var trade = Trade(order.asset, order.size, price, 0.0, event.time)
                 trades.append(trade^)
             else:
                 remaining_orders.append(order)

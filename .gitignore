@@ -3,4 +3,4 @@
 !.pixi/config.toml
 scratch/*
 *.mojoc
-
+lib/*

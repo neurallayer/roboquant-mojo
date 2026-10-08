@@ -19,7 +19,7 @@ trait Journal:
 
 
 @fieldwise_init
-struct EquityTracker(Journal, Writable):
+struct EquityTracker(Journal, Writable, Defaultable):
     """Tracks the equity of the account over time."""
 
     var equity: List[Float64]
@@ -50,7 +50,8 @@ struct EquityTracker(Journal, Writable):
 
 
 @fieldwise_init
-struct Printer(Journal, Writable):
+struct Printer(Journal, Writable, Defaultable):
+    """Tracks few simple metrics like number of events, and singals.""" 
 
     var trades: Int
     var items: Int
@@ -93,3 +94,8 @@ struct TradeTracker(Journal, Writable):
         for trade in self.trades:
             result.deposit(trade.pnl())
         return result^
+
+    def to_timeseries(self) -> TimeSeries:
+        var times = [trade.time for trade in self.trades]
+        var prices = [trade.price for trade in self.trades]
+        return TimeSeries.univariate("price", times, prices)

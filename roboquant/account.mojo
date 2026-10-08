@@ -15,12 +15,14 @@ struct Trade(Copyable, Writable):
         size (Size): The size of the trade.
         price (Float64): The execution price of the trade.
         pnl_value (Float64): The realized Profit and Loss value of the trade.
+        time: The time the trade was executed.
     """
 
     var asset: Asset
     var size: Size
     var price: Float64
     var pnl_value: Float64
+    var time: Timestamp
 
     def pnl(self) -> Amount:
         """The realized Profit and Loss amount by this trade."""

@@ -79,7 +79,7 @@ struct Printer(Journal, Writable, Defaultable):
 
 @fieldwise_init
 struct TradeTracker(Journal, Writable):
-    """Tracks all the trades during a run."""
+    """Tracks all the trades that are executed during a run."""
 
     var trades: List[Trade]
 

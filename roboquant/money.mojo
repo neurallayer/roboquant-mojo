@@ -1,6 +1,9 @@
 from .time import Timestamp
 from std.os import abort
 
+comptime USD = Currency.USD
+comptime EUR = Currency.EUR
+
 struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     """
     Currency represents a specific currency used in financial transactions.
@@ -66,9 +69,9 @@ struct Converter(ImplicitlyCopyable):
 
     def __init__(out self):
         self._rates = {}
-        self._rates[Currency.USD] = ([0.0], [1.0])
-        self._rates[Currency.EUR] = ([0.0], [1.1])
-        self._rates[Currency.GBP] = ([0.0], [1.2])
+        self._rates[Currency.USD] = ([0.0], [1.1])
+        self._rates[Currency.EUR] = ([0.0], [1.0])
+        self._rates[Currency.GBP] = ([0.0], [0.9])
 
 
     def __init__(out self, *, copy: Self):
@@ -92,7 +95,7 @@ struct Converter(ImplicitlyCopyable):
 
 
 @fieldwise_init
-struct Amount(ImplicitlyCopyable, Writable, Roundable):
+struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
     """Holds the monetary amount of a single currency. 
     Should be threated like an immutable struct."""
 
@@ -133,7 +136,7 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable):
     def __lt__(self, other: Float64) -> Bool:
         return self.value < other
 
-struct Wallet(Copyable, Writable, Defaultable, Roundable):
+struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
     """Contains values of multiple currencies at the same time.
     This is a mutable struct.
     """
@@ -207,6 +210,15 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable):
 
     def __getitem__(self, currency: Currency) raises -> Float64:
         return self.values[currency]
+
+    def __iadd__(mut self, amt: Amount):
+        self.deposit(amt)
+
+    def __isub__(mut self, amt: Amount):
+        self.withdraw(amt)
+
+    def __len__(self) -> Int:
+        return len(self.values)
 
     def convert_to(self, currency: Currency, time: Timestamp) -> Amount:
         var sum = 0.0

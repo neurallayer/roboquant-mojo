@@ -9,6 +9,8 @@ build = "pixi run mojo precompile roboquant/ -o lib/roboquant.mojoc"
 charts = { cmd = "pixi run mojo -I lib tests/test_chart.mojo", depends-on = ["build"]}
 backtest = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["build"]}
 
+test = { cmd = "pixi run mojo -I lib -D ASSERT=all tests/test_money.mojo", depends-on = ["build"]}
+
 
 [dependencies]
 mojo = ">=1.1.0,<2"

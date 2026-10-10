@@ -87,6 +87,9 @@ struct EMACrossOver(BarStrategy):
 
     var history: Dict[Asset, Tuple[Float64, Float64]]
 
+    def __init__(out self):
+        self.history = {}
+
     def create_rating(mut self, asset: Asset, price: Float64) -> Float64:
     
         var (old_ema_fast, old_ema_slow) = self.history.get(asset, (price, price))
@@ -97,13 +100,10 @@ struct EMACrossOver(BarStrategy):
 
         self.history[asset] = (new_ema_fast, new_ema_slow)
    
-        if new_ema_fast < new_ema_slow and old_ema_fast > old_ema_slow:
+        if new_ema_fast <= new_ema_slow and old_ema_fast > old_ema_slow:
             return self.SELL
-        elif new_ema_fast > new_ema_slow and old_ema_fast < old_ema_slow:
+        elif new_ema_fast >= new_ema_slow and old_ema_fast < old_ema_slow:
             return self.BUY
 
         return self.NO_RATING
-
-    def __init__(out self):
-        self.history = {}
 

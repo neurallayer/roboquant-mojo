@@ -72,13 +72,13 @@ struct SimBroker(Broker):
 
 
     def __has_expired(self, order: Order, time: Timestamp) -> Bool:
-        if order.tif == TIF.DAY:
+        if order.tif == TIF.GTC:
+            return False
+        elif order.tif == TIF.DAY:
             return not same_day(order.time.value(), time, self.tz)
-        elif order.tif == TIF.GTC:
-            return False
-        else:
-            print("Unknown TIF:", order.tif)
-            return False
+        
+        print("Unknown TIF:", order.tif)
+        return False
 
     def __process_orders(mut self, ref event: Event) -> List[Trade]:
         var trades = List[Trade]()

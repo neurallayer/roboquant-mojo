@@ -45,7 +45,7 @@ struct Asset(ImplicitlyCopyable, Writable, Deinitable, KeyElement):
         return Asset(symbol, currency, AssetType.FOREX, contract_size)
 
     def value(self, size: Size, price: Float64) -> Amount:
-        """Return the monetary value given the size and price."""
+        """Return the monetary amount given the size and price."""
         try:
             var value = Float64(self.contract_size * size) * price
             return Amount(self.currency, value)

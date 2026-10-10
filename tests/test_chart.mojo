@@ -7,14 +7,24 @@ from roboquant.time import Timeframe
 from roboquant.run import run
 from roboquant.strategy import EMACrossOver
 from std.math import round
+from std.python import Python, PythonObject
+
 
 
 def main() raises:
-    var feed = RandomWalkFeed(start="2025-01-01",end="2026-01-01", step_seconds = 3600.0 * 24.0)
-    var assets = List(feed.assets())
-    for asset in assets[0:3]:
+    var feed = RandomWalkFeed(start="2025-01-01",end="2026-01-01", step_seconds = 3600.0 * 24.0, n_assets=8)
+    # var assets = List(feed.assets())
+
+    var plt = Python.import_module("matplotlib.pyplot")
+    var fig_axs = plt.subplots(4, 2, figsize=[10,20])
+
+    var axs = fig_axs[1].flatten()
+
+    for idx, asset in enumerate(feed.assets()):
+        var ax = axs[idx]
         var ts1 = feed.to_timeseries(asset)
-        ts1.plot(asset.symbol)
+        ts1.plot(asset.symbol, ax)
+    plt.show()
 
     var strategy = EMACrossOver()
     var trader = FlexTrader()

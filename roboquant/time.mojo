@@ -1,6 +1,6 @@
 from morrow import Morrow, TimeZone
 from std.os import abort
-from std.python import Python
+from std.python import Python, PythonObject
 from std.python.numpy import copy_to_numpy_array
 
 comptime Timestamp = Float64
@@ -146,7 +146,15 @@ struct TimeSeries(Copyable, Writable):
         return Self(timeline, values_dict)  
   
 
-    def plot(self, metric: String) -> None:
+    def plot(self, metric: String) raises -> None:
+        var plt = Python.import_module("matplotlib.pyplot")
+        var fig_ax = plt.subplots()
+        var ax = fig_ax[1]
+        ax.set_title(metric)
+        self.plot(metric, ax)
+        plt.show()
+
+    def plot(self, metric: String, ax: PythonObject) raises -> None:
         """
         Plot the TimeSeries data using a plotting library.
         This method visualizes the time series data for analysis and interpretation.
@@ -159,13 +167,10 @@ struct TimeSeries(Copyable, Writable):
             print("Metric not found in TimeSeries:", metric)
             return  
 
-        try:
-            var pyplot = Python.import_module("matplotlib.pyplot")
-            var times_np = copy_to_numpy_array(self.timeline)
-            var values_np = copy_to_numpy_array(values.value())
-            pyplot.plot(times_np, values_np, label=metric)
-            pyplot.legend()
-            pyplot.show()
-        except e:
-            print("Error in plotting TimeSeries:", e)
+        var times_np = copy_to_numpy_array(self.timeline)
+        var values_np = copy_to_numpy_array(values.value())
+
+        ax.plot(times_np, values_np, label=metric)
+        ax.legend()
+    
 

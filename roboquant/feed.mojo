@@ -63,8 +63,6 @@ struct Event[P: PriceItem](Copyable):
                 return price.get_volume(type)
         return None
 
-
-
 struct Bar(PriceItem, Copyable, Writable):
     """Represents a Bar (a.k.a CandleStick) price-item with Open, High, Low, Close and Volume
     values."""
@@ -80,6 +78,9 @@ struct Bar(PriceItem, Copyable, Writable):
         self.ohlcv = [open,high,low,close,volume]
 
     def get_price(self, price_type: String = "DEFAULT") -> Float64:
+        """Get the price for provided price type.
+        """
+
         if price_type == "OPEN":
             return self.ohlcv[0]
         elif price_type == "HIGH":

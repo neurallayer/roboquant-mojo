@@ -9,7 +9,11 @@ comptime UTC = TimeZone(0, "UTC")
 comptime TIME_MIN = from_iso("1900-01-01")
 comptime TIME_MAX = from_iso("2100-01-01")
 
-
+def now() -> Timestamp:
+    try:
+        return Morrow.utcnow().timestamp()
+    except e:
+        abort(String(e))
 
 def same_day(t1: Timestamp, t2: Timestamp, tz: TimeZone = UTC) -> Bool:
     """Check if two timestamps are on the same day given a timezone."""
@@ -134,11 +138,11 @@ struct TimeSeries(Copyable, Writable):
     @staticmethod
     def univariate(name: String, timeline: Timeline, data: List[Float64]) -> Self:
         """
-        Create a univariate TimeSeries with a single variable.
+        Create a univariate TimeSeries, so only a single variable.
         Args:
             name (String): The name of the variable.
-            times (Timeline): A list of timestamps representing the time points of the series.
-            values (List[Float64]): A list of values corresponding to each timestamp in the series.
+            timeline (Timeline): A list of timestamps representing the time points of the series.
+            data (List[Float64]): A list of Float64 values corresponding to each timestamp in the series.
         Returns:
             TimeSeries: A univariate TimeSeries instance.
         """
@@ -146,20 +150,24 @@ struct TimeSeries(Copyable, Writable):
         return Self(timeline, values_dict)  
   
 
-    def plot(self, metric: String) raises -> None:
+    def plot(self, *metrics: String) raises -> None:
+        """
+        Plot one or more metrics in a single chart (Axis).
+        It requires the matplotlib library and numpy to be installed in the environment.
+        """
+
         var plt = Python.import_module("matplotlib.pyplot")
         var fig_ax = plt.subplots()
         var ax = fig_ax[1]
-        ax.set_title(metric)
-        self.plot(metric, ax)
+        for metric in metrics:
+            self.plot(metric, ax)
+        ax.legend()
         plt.show()
 
     def plot(self, metric: String, ax: PythonObject) raises -> None:
         """
         Plot the TimeSeries data using a plotting library.
         This method visualizes the time series data for analysis and interpretation.
-
-        It requires the matplotlib library and numpy to be installed in the environment.
         """
 
         var values = self.data.get(metric)
@@ -167,10 +175,10 @@ struct TimeSeries(Copyable, Writable):
             print("Metric not found in TimeSeries:", metric)
             return  
 
-        var times_np = copy_to_numpy_array(self.timeline)
+        var times_np = copy_to_numpy_array(self.timeline).astype('datetime64[s]')
         var values_np = copy_to_numpy_array(values.value())
 
         ax.plot(times_np, values_np, label=metric)
-        ax.legend()
+        
     
 

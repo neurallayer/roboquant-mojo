@@ -145,14 +145,21 @@ struct Account(Writable, Copyable):
         writer.write("\npositions   : ")
         for pos in self.positions:
             writer.write(pos.size, "@", pos.asset.symbol, " ")
+        else:
+            writer.write("none")
  
         writer.write("\norders      : ")
         for order in self.orders:
             writer.write(order.size, "@", order.asset.symbol, " ") 
+        else:
+            writer.write("none")
 
         writer.write("\ntrades      : ")
         for trade in self.trades:
             writer.write(trade.size, "@", trade.asset.symbol, " ") 
+        else:
+            writer.write("none")
+
         writer.write("\n")
 
         

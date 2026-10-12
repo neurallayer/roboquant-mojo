@@ -15,7 +15,7 @@ struct AssetType(ImplicitlyCopyable, Writable, Equatable, Hashable):
     var value: Int 
 
 @fieldwise_init
-struct Asset(ImplicitlyCopyable, Writable, Deinitable, KeyElement):
+struct Asset(ImplicitlyCopyable, Writable, KeyElement):
     """
     The Asset struct represents a financial instrument that can be traded in the market.
     It is uniquely identified by only its symbol, which is a string representing the asset's ticker or identifier.

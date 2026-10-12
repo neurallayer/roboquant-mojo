@@ -136,6 +136,9 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
     def __lt__(self, other: Float64) -> Bool:
         return self.value < other
 
+    def __neg__(self) -> Self:
+        return Amount(self.currency, - self.value)
+
 struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
     """Contains values of multiple currencies at the same time.
     This is a mutable struct.

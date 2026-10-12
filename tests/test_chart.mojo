@@ -16,14 +16,17 @@ def main() raises:
     # var assets = List(feed.assets())
 
     var plt = Python.import_module("matplotlib.pyplot")
-    var fig_axs = plt.subplots(4, 2, figsize=[10,20])
+    var fig_axs = plt.subplots(4, 2, figsize=[12,8])
 
+    var fig = fig_axs[0]
     var axs = fig_axs[1].flatten()
 
     for idx, asset in enumerate(feed.assets()):
         var ax = axs[idx]
         var ts1 = feed.to_timeseries(asset)
         ts1.plot(asset.symbol, ax)
+        ax.legend()
+    fig.tight_layout()
     plt.show()
 
     var strategy = EMACrossOver()

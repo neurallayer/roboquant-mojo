@@ -12,7 +12,8 @@ from std.collections import Set
 trait PriceItem(Copyable & Deinitable & Writable):
     """A PriceItem represents a single price data point for a specific asset at a specific time.
     It provides methods to retrieve the associated asset, price, and volume information.
-    Common implementations of PriceItem include Bar and Quote, which represent different types of market data.
+    Common implementations of PriceItem include Bar/Candle and Quote, which represent different
+    types of market data.
     """
 
     def get_asset(self) -> Asset:
@@ -51,15 +52,13 @@ struct Event[P: PriceItem](Copyable):
     
     def get_price(self, asset:Asset, type: String = "DEFAULT") -> Optional[Float64]:
         for ref price in self.prices:
-            ref p = price.get_asset()
-            if p == asset:
+            if asset == price.get_asset():
                 return price.get_price(type)
         return None
 
     def get_volume(self, asset:Asset, type: String = "DEFAULT") -> Optional[Float64]:
         for ref price in self.prices:
-            ref p = price.get_asset()
-            if p == asset:
+            if asset == price.get_asset():
                 return price.get_volume(type)
         return None
 
@@ -70,12 +69,12 @@ struct Bar(PriceItem, Copyable, Writable):
     var asset: Asset
     var ohlcv: Array[Float64,5]
 
-    def get_asset(self) -> Asset:
-        return self.asset
-
     def __init__(out self, asset: Asset, open: Float64, high: Float64, low: Float64, close: Float64, volume: Float64):
         self.asset = asset
         self.ohlcv = [open,high,low,close,volume]
+
+    def get_asset(self) -> Asset:
+        return self.asset
 
     def get_price(self, price_type: String = "DEFAULT") -> Float64:
         """Get the price for provided price type.
@@ -139,7 +138,7 @@ struct RandomWalkFeed:
         Initialize a RandomWalkFeed with the specified parameters.
         Args:
             start (String): The starting timestamp of the feed in ISO format.
-            end (String): The ending timestamp of the feed in ISO format.
+            end (String): The ending timestamp of the feed in ISO format (exclusive).
             step_seconds (Float64): The time interval between consecutive Events in seconds.
             n_assets (Int): The number of unique assets to generate price data for.
         """
@@ -203,8 +202,10 @@ struct RandomWalkFeed:
             var assets = {Asset.Stock(symbol) for symbol in symbols}
             var time = Morrow.fromisoformat(start).float_timestamp()
             var stop = Morrow.fromisoformat(end).float_timestamp()
-            var size = Int((stop - time) / step_seconds) + 1
-            var events = List[Event[Bar]](capacity=size)
+            assert stop > time, "end has to be after start"
+
+            var capacity = Int((stop - time) / step_seconds) + 1
+            var events = List[Event[Bar]](capacity=capacity)
             var prices = {asset:random_float64(100.0, 200.0) for asset in assets}
         
             while True:

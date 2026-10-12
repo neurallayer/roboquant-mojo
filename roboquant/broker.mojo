@@ -8,7 +8,7 @@ from .time import Timestamp, same_day, UTC
 from morrow import TimeZone
 
 
-trait Broker(Deinitable):
+trait Broker:
     """Brokers are not copyable, since they typically hold connections 
     to a real brokers API end-points.""" 
 
@@ -110,7 +110,6 @@ struct SimBroker(Broker):
         return trades^
     
     def sync(mut self, event: Event) -> Account:
-        
         
         for item in event.prices:     
             self.prices[item.get_asset()] = item.get_price()   

@@ -1,6 +1,6 @@
 from std.testing import assert_equal, assert_true, assert_not_equal, assert_almost_equal, TestSuite
 from roboquant.money import Amount, Wallet, USD, EUR, Currency
-from roboquant.time import Timestamp, TIME_MIN
+from roboquant.time import Timestamp, now
 
 
 def test_currency() raises:
@@ -12,6 +12,9 @@ def test_amount() raises:
     var amt2 = Amount("USD", 100)
     var amt3 = Amount(USD, 100)
     assert_true(amt1 == amt2 == amt3)
+
+    var amt4 = - amt2
+    assert_equal(amt4, -100@USD)
 
 def test_wallet() raises:
     var amt1 = 100@USD
@@ -26,15 +29,21 @@ def test_wallet() raises:
 
     w1.deposit(500@EUR)
     assert_equal(w1[EUR], 500)
-
     assert_equal(len(w1), 2)
 
+    var w2 = 100@EUR + 100@USD
+    assert_equal(w2[USD], 100)
+    assert_equal(w2[EUR], 100)
+
+
+
 def test_conversion() raises:
+    var t = now()
     var amt1 = 100@USD
-    var amt2 = amt1.convert_to("USD", TIME_MIN)
+    var amt2 = amt1.convert_to("USD", t)
     assert_equal(amt1, amt2)
 
-    var amt_eur = amt1.convert_to(EUR, TIME_MIN)
+    var amt_eur = amt1.convert_to(EUR, t)
     assert_almost_equal(amt1.value, amt_eur.value * 1.1)
 
 

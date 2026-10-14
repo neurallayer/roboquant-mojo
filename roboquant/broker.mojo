@@ -111,8 +111,7 @@ struct SimBroker(Broker):
     
     def sync(mut self, event: Event) -> Account:
         
-        for item in event.prices:     
-            self.prices[item.get_asset()] = item.get_price()   
+        self.prices.update(event.get_prices()) 
      
         var trades = self.__process_orders(event)
 

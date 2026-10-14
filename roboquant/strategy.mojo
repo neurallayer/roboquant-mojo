@@ -20,7 +20,7 @@ struct Signal(Writable, ImplicitlyCopyable):
     var rating: Float64
     var type: SignalType
 
-    def __init__(out self, asset: Asset, rating: Float64, type: SignalType = SignalType.ENTRY_EXIT):
+    def __init__(out self, var asset: Asset, rating: Float64, type: SignalType = SignalType.ENTRY_EXIT):
         self.asset = asset
         self.rating = rating
         self.type = type
@@ -55,7 +55,7 @@ trait Strategy:
     def create_signals(mut self, event: Event) -> List[Signal]:
         ...
 
-trait BarStrategy(Strategy):
+trait PriceStrategy(Strategy):
 
     comptime BUY = 1.0
     comptime SELL = -1.0
@@ -67,7 +67,7 @@ trait BarStrategy(Strategy):
     def create_signals(mut self, event: Event) -> List[Signal]:
         var signals: List[Signal]  = []
         var price_type = self.get_price_type()
-        for item in event.prices:
+        for item in event.items:
             var price = item.get_price(price_type)
             ref asset = item.get_asset()
             var rating = self.create_rating(asset, price)
@@ -84,7 +84,7 @@ trait BarStrategy(Strategy):
         is typically normalized to a value between -1 and 1."""
         ...
 
-struct EMACrossOver(BarStrategy):
+struct EMACrossOver(PriceStrategy):
     """Two different Exponential Moving Averages where a signal is generated
     if the one crosses the other moving overage.
     """

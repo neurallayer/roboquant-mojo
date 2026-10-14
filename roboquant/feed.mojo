@@ -17,8 +17,12 @@ trait PriceItem(Copyable & Deinitable & Writable):
     """
 
     def get_asset(self) -> Asset:
-        """Return the Asset associated with this PriceItem."""
+        """Return the asset associated with this PriceItem."""
         ...
+
+    def get_type(self) -> String:
+        comptime type_name = reflect[Self].base_name()
+        return type_name
 
     def get_price(self, price_type: String = "DEFAULT") -> Float64:
         """Return the price of the asset for the specified price type.
@@ -48,18 +52,31 @@ struct Event[P: PriceItem](Copyable):
     """
 
     var time: Timestamp
-    var prices: List[Self.P]
+    var items: List[Self.P]
     
+
+    def get_prices(self, type: String = "DEFAULT") -> Dict[Asset, Float64]:
+        var result = Dict[Asset, Float64](capacity=len(self.items))
+        for item in self.items:
+            result[item.get_asset()] = item.get_price(type)
+        return result^
+
+    def get_assets(self) -> Set[Asset]:
+        var result = Set[Asset]()
+        for item in self.items:
+            result.add(item.get_asset())
+        return result^
+
     def get_price(self, asset:Asset, type: String = "DEFAULT") -> Optional[Float64]:
-        for ref price in self.prices:
+        for ref price in self.items:
             if asset == price.get_asset():
                 return price.get_price(type)
         return None
 
     def get_volume(self, asset:Asset, type: String = "DEFAULT") -> Optional[Float64]:
-        for ref price in self.prices:
-            if asset == price.get_asset():
-                return price.get_volume(type)
+        for ref item in self.items:
+            if asset == item.get_asset():
+                return item.get_volume(type)
         return None
 
 struct Bar(PriceItem, Copyable, Writable):
@@ -69,7 +86,7 @@ struct Bar(PriceItem, Copyable, Writable):
     var asset: Asset
     var ohlcv: Array[Float64,5]
 
-    def __init__(out self, asset: Asset, open: Float64, high: Float64, low: Float64, close: Float64, volume: Float64):
+    def __init__(out self, var asset: Asset, open: Float64, high: Float64, low: Float64, close: Float64, volume: Float64):
         self.asset = asset
         self.ohlcv = [open,high,low,close,volume]
 
@@ -152,8 +169,7 @@ struct RandomWalkFeed:
     def assets(self) -> Set[Asset]:
         var result = Set[Asset]()
         for evt in self.events:
-            for price in evt.prices:
-                result.add(price.asset)
+            result.update(evt.get_assets())
         return result^
 
     def timeframe(self) -> Timeframe:
@@ -165,7 +181,7 @@ struct RandomWalkFeed:
     def count_bars(self) -> Int:
         var sum_bars = 0
         for evt in self.events:
-            sum_bars += len(evt.prices)
+            sum_bars += len(evt.items)
         return sum_bars
 
 
@@ -174,7 +190,7 @@ struct RandomWalkFeed:
         var tl = List[Timestamp](capacity=l)
         var prices = List[Float64](capacity=l)
         for evt in self.play():
-            for ref item in evt.prices:
+            for ref item in evt.items:
                 if item.get_asset() == asset:
                     tl.append(evt.time)
                     prices.append(item.get_price(price_type))

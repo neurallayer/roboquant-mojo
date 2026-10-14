@@ -71,7 +71,7 @@ struct Printer(Journal, Writable, Defaultable):
     def track(mut self, account: Account, event: Event, signals: List[Signal], orders: List[Order]) -> None:
         self.events += 1
         self.trades += len(account.trades)
-        self.items += len(event.prices)
+        self.items += len(event.items)
         self.signals += len(signals)
         self.orders += len(orders)
         self.account = account.copy()

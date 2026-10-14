@@ -10,6 +10,7 @@ charts = { cmd = "pixi run mojo -I lib tests/test_chart.mojo", depends-on = ["bu
 backtest = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["build"]}
 
 test = { cmd = "pixi run mojo -I lib -D ASSERT=all tests/test_money.mojo", depends-on = ["build"]}
+test_evt = { cmd = "pixi run mojo -I lib -D ASSERT=all tests/test_event.mojo", depends-on = ["build"]}
 
 
 [dependencies]

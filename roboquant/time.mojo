@@ -65,7 +65,8 @@ struct Timeframe(ImplicitlyCopyable, Writable):
         inclusive (Bool): A flag indicating whether the end timestamp is inclusive.
     """
 
-    comptime INFINITY = Timeframe(TIME_MIN, TIME_MAX)
+    comptime EMPTY = Timeframe(TIME_MIN, TIME_MIN, False)
+    comptime INFINITY = Timeframe(TIME_MIN, TIME_MAX, True)
 
     var start: Timestamp
     var end: Timestamp
@@ -114,7 +115,6 @@ struct Timeframe(ImplicitlyCopyable, Writable):
         var end = timestamp_format(self.end)
         writer.write("[", start, " - ", end, close_str)
  
-
 
 struct TimeSeries(Copyable, Writable):
     """

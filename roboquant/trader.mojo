@@ -45,6 +45,8 @@ struct FlexTrader(Trader):
         from the configured order amount and the event's asset price; signals
         that cannot be acted on are skipped.
         """
+        if not signals:
+            return []
         var orders: List[Order] = []
         for signal in signals:
             var position_size = account.get_position_size(signal.asset)

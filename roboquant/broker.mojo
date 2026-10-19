@@ -27,7 +27,6 @@ struct SimBroker(Broker):
     var positions: Dict[Asset, Position]
     var cash: Wallet
     var base_currency: Currency
-    var prices: Dict[Asset, Float64]
     var order_id: Int
     var tz: TimeZone
 
@@ -36,7 +35,6 @@ struct SimBroker(Broker):
         self.positions = {}
         self.cash = Wallet(deposit)
         self.base_currency = deposit.currency
-        self.prices = {}
         self.order_id = 0
         self.tz = timezone
 
@@ -61,9 +59,9 @@ struct SimBroker(Broker):
                 if not success:
                     print("Unknown Order")
 
-    def __update_positions(mut self) -> None:
+    def __update_positions(mut self, event: Event) -> None:
         for asset in self.positions:
-            var price = self.prices.get(asset)
+            var price = event.get_price(asset)
             if price:
                 try:
                     self.positions[asset].mkt_price = price.value()
@@ -81,6 +79,9 @@ struct SimBroker(Broker):
         return False
 
     def __process_orders(mut self, ref event: Event) -> List[Trade]:
+        if not self.orders:
+            return []
+    
         var trades = List[Trade]()
         var remaining_orders = List[Order]()
   
@@ -110,13 +111,10 @@ struct SimBroker(Broker):
         return trades^
     
     def sync(mut self, event: Event) -> Account:
-        
-        self.prices.update(event.get_prices()) 
-     
         var trades = self.__process_orders(event)
 
         # update the market price of the positions based on the latest prices from the event
-        self.__update_positions()
+        self.__update_positions(event)
 
         var bp = self.cash.convert_to(self.base_currency, event.time)
 

@@ -1,143 +1,81 @@
 from .asset import Asset
 from .time import Timestamp, Timeframe, TimeSeries
+from .order import Size
 
-
+from std.utils import Variant
 from std.random import random_float64, randn_float64, seed, random_ui64
 from morrow import Morrow
 from std.os import abort
 from std.collections import Set
 
 
+@fieldwise_init
+struct Bar(Copyable):
+    var open: Float64
+    var high: Float64
+    var low: Float64
+    var close: Float64
+    var volume: Float64
 
-trait PriceItem(Copyable & Deinitable & Writable):
-    """A PriceItem represents a single price data point for a specific asset at a specific time.
-    It provides methods to retrieve the associated asset, price, and volume information.
-    Common implementations of PriceItem include Bar/Candle and Quote, which represent different
-    types of market data.
-    """
+    def to_array(self) -> Array[Float64, 5]:
+        return [self.open, self.high, self.low, self.close, self.volume]
 
-    def get_asset(self) -> Asset:
-        """Return the asset associated with this PriceItem."""
-        ...
-
-    def get_type(self) -> String:
-        comptime type_name = reflect[Self].base_name()
-        return type_name
-
-    def get_price(self, price_type: String = "DEFAULT") -> Float64:
-        """Return the price of the asset for the specified price type.
-        Args:
-            price_type (String): The type of price to retrieve (e.g., "OPEN", "HIGH", "LOW", "CLOSE", "ASK", "BID").
-        Returns:
-            Float64: The price of the asset for the specified price type.
-        """
-        ...
-
-    def get_volume(self, volume_type: String = "DEFAULT") -> Float64:
-        """Return the volume of the asset for the specified volume type.
-        Args:
-            volume_type (String): The type of volume to retrieve (e.g., "DEFAULT").
-        Returns:
-            Float64: The volume of the asset for the specified volume type.
-        """
-        ...
+@fieldwise_init
+struct TradePrice(Copyable):
+    var price: Float64
+    var volume: Float64
 
 
 @fieldwise_init
-struct Event[P: PriceItem](Copyable):
-    """
-    An Event represents a collection of price data points (PriceItems) for various
-    assets at a specific timestamp.
-    It provides methods to retrieve the timestamp and access the price data for specific assets.
-    """
+struct Quote(Copyable):
+    var ask_price: Float64
+    var ask_volume: Float64
+    var bid_price: Float64
+    var bid_volume: Float64
 
-    var time: Timestamp
-    var items: List[Self.P]
-    
 
-    def get_prices(self, type: String = "DEFAULT") -> Dict[Asset, Float64]:
-        var result = Dict[Asset, Float64](capacity=len(self.items))
-        for item in self.items:
-            result[item.get_asset()] = item.get_price(type)
-        return result^
+struct OrderBookEntry(Copyable):
+    var price: Float64
+    var volume: Float64 
 
-    def get_assets(self) -> Set[Asset]:
-        var result = Set[Asset]()
-        for item in self.items:
-            result.add(item.get_asset())
-        return result^
+@fieldwise_init
+struct OrderBook(Copyable):
+    var asset: Asset
+    var ask: List[OrderBookEntry]
+    var bid: List[OrderBookEntry]
 
-    def get_price(self, asset:Asset, type: String = "DEFAULT") -> Optional[Float64]:
-        for ref price in self.items:
-            if asset == price.get_asset():
-                return price.get_price(type)
+
+comptime PriceItem = Variant[Bar, Quote, TradePrice]
+
+
+@fieldwise_init
+struct Event(Sized, Copyable):
+    var time: Float64
+    var items: Dict[Asset, PriceItem]
+
+    def __len__(self) -> Int:
+        return len(self.items)
+
+    @staticmethod
+    def __get_price(item: PriceItem) -> Float64:
+        if item.isa[Bar]():
+            ref c = item[Bar]
+            return c.close
+        elif item.isa[Quote]():
+            ref q = item[Quote]
+            return (q.ask_price + q.bid_price)/2
+        else:
+            ref t = item[TradePrice]
+            return t.price
+
+    def get_price(self, asset: Asset) -> Optional[Float64]:
+        var item = self.items.get(asset)
+        if item:
+            return Self.__get_price(item.value())
         return None
 
-    def get_volume(self, asset:Asset, type: String = "DEFAULT") -> Optional[Float64]:
-        for ref item in self.items:
-            if asset == item.get_asset():
-                return item.get_volume(type)
-        return None
-
-struct Bar(PriceItem, Copyable, Writable):
-    """Represents a Bar (a.k.a CandleStick) price-item with Open, High, Low, Close and Volume
-    values."""
-
-    var asset: Asset
-    var ohlcv: Array[Float64,5]
-
-    def __init__(out self, var asset: Asset, open: Float64, high: Float64, low: Float64, close: Float64, volume: Float64):
-        self.asset = asset
-        self.ohlcv = [open,high,low,close,volume]
-
-    def get_asset(self) -> Asset:
-        return self.asset
-
-    def get_price(self, price_type: String = "DEFAULT") -> Float64:
-        """Get the price for provided price type.
-        """
-
-        if price_type == "OPEN":
-            return self.ohlcv[0]
-        elif price_type == "HIGH":
-            return self.ohlcv[1]
-        elif price_type == "LOW":
-            return self.ohlcv[2]
-        else:
-            return self.ohlcv[3]
-
-    def get_volume(self, volume_type: String = "DEFAULT") -> Float64:
-        return self.ohlcv[4]
 
 
-struct Quote(PriceItem):
-    """Represents a Quote price-item with an asset and a ask-bid prices."""
-
-    var asset: Asset
-    var ohlcv: Array[Float64,4]
-
-    def __init__(out self, asset: Asset, ask: Float64, ask_vol: Float64, bid: Float64, bid_vol: Float64):
-        self.asset = asset
-        self.ohlcv = [ask,ask_vol, bid, bid_vol]
-
-    def get_asset(self) -> Asset:
-        return self.asset
-
-    def get_price(self, price_type: String = "DEFAULT") -> Float64:
-        if price_type == "ASK":
-            return self.ohlcv[0]
-        elif price_type == "BID":
-            return self.ohlcv[2]
-        else:
-            return (self.ohlcv[0] + self.ohlcv[2])/2.0
-
-    def get_volume(self, volume_type: String = "DEFAULT") -> Float64:
-        if volume_type == "ASK":
-            return self.ohlcv[1]
-        elif volume_type == "BID":
-            return self.ohlcv[3]
-        else:
-            return (self.ohlcv[1] + self.ohlcv[3])/2.0
 
 
 @fieldwise_init
@@ -148,7 +86,7 @@ struct RandomWalkFeed:
     The feed can be used to test trading strategies and algorithms in a controlled environment.
     """
 
-    var events: List[Event[Bar]]
+    var events: List[Event]
 
     def __init__(out self, start: String, end: String, step_seconds: Float64 = 3600.0 * 24.0, n_assets: Int = 10):
         """
@@ -162,14 +100,14 @@ struct RandomWalkFeed:
 
         self.events = Self.__gen_bar_feed(start, end, step_seconds, n_assets)
 
-    def play(self) -> Span[Event[Bar], origin_of(self.events)]:
+    def play(self) -> Span[Event, origin_of(self.events)]:
         """Return a Span of Events representing the generated feed."""
         return Span[mut=False](self.events)
 
     def assets(self) -> Set[Asset]:
         var result = Set[Asset]()
         for evt in self.events:
-            result.update(evt.get_assets())
+            result.update({asset for asset in evt.items.keys()})
         return result^
 
     def timeframe(self) -> Timeframe:
@@ -185,16 +123,15 @@ struct RandomWalkFeed:
         return sum_bars
 
 
-    def to_timeseries(self, asset: Asset, price_type: String = "DEFAULT") -> TimeSeries: 
+    def to_timeseries(self, asset: Asset) -> TimeSeries: 
         var l = len(self.events)
         var tl = List[Timestamp](capacity=l)
         var prices = List[Float64](capacity=l)
         for evt in self.play():
-            for ref item in evt.items:
-                if item.get_asset() == asset:
-                    tl.append(evt.time)
-                    prices.append(item.get_price(price_type))
-                    break;
+            var price = evt.get_price(asset)
+            if price:
+                tl.append(evt.time)
+                prices.append(price.value())
         return TimeSeries.univariate(asset.symbol, tl, prices)
 
 
@@ -210,7 +147,7 @@ struct RandomWalkFeed:
         return result^
 
     @staticmethod
-    def __gen_bar_feed(start: String, end: String, step_seconds: Float64, n_assets: Int) -> List[Event[Bar]]:
+    def __gen_bar_feed(start: String, end: String, step_seconds: Float64, n_assets: Int) -> List[Event]:
         """Generate a test feed with randomized Bars."""
         try:
             seed(42)
@@ -221,15 +158,15 @@ struct RandomWalkFeed:
             assert stop > time, "end has to be after start"
 
             var capacity = Int((stop - time) / step_seconds) + 1
-            var events = List[Event[Bar]](capacity=capacity)
+            var events = List[Event](capacity=capacity)
             var prices = {asset:random_float64(100.0, 200.0) for asset in assets}
         
             while True:
-                var items = List[Bar](capacity=n_assets)
+                var items = Dict[Asset, PriceItem](capacity=n_assets)
                 for asset in assets:
                     var price = prices[asset]
-                    var bar = Bar(asset, price, price*1.01, price*0.99, price, 10_000)
-                    items.append(bar^)
+                    var bar = Bar(price, price*1.01, price*0.99, price, 10_000)
+                    var _ = items.insert(asset, bar^)
                     prices[asset] = price * randn_float64(mean=1.0, standard_deviation=0.001)
                 var evt = Event(time, items^)
                 events.append(evt^)

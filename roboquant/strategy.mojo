@@ -55,22 +55,18 @@ trait Strategy:
     def create_signals(mut self, event: Event) -> List[Signal]:
         ...
 
-trait PriceStrategy(Strategy):
+trait PricingStrategy(Strategy):
 
     comptime BUY = 1.0
     comptime SELL = -1.0
     comptime NO_RATING = 0.0
 
-    def get_price_type(self) -> String:
-        return "DEFAULT"
-
+  
     def create_signals(mut self, event: Event) -> List[Signal]:
         var signals: List[Signal]  = []
-        var price_type = self.get_price_type()
-        for item in event.items:
-            var price = item.get_price(price_type)
-            ref asset = item.get_asset()
-            var rating = self.create_rating(asset, price)
+        for ref asset in event.items.keys():   
+            var price = event.get_price(asset)
+            var rating = self.create_rating(asset, price.value())
             if rating:
                 var signal = Signal(asset, rating)
                 signals.append(signal)
@@ -84,7 +80,7 @@ trait PriceStrategy(Strategy):
         is typically normalized to a value between -1 and 1."""
         ...
 
-struct EMACrossOver(PriceStrategy):
+struct EMACrossOver(PricingStrategy):
     """Two different Exponential Moving Averages where a signal is generated
     if the one crosses the other moving overage.
     """

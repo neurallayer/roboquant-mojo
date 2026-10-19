@@ -107,7 +107,7 @@ struct Account(Writable, Copyable):
 
     def get_position_size(self, asset: Asset) -> Size:
         try:
-            var position_sizes = [p.size for p in self.positions if p.asset == asset]
+            var position_sizes = [p.size for ref p in self.positions if p.asset == asset]
             var sum = Size()
             for size in position_sizes:
                 sum += size

@@ -81,7 +81,9 @@ struct FlexTrader(Trader):
 
 def round_number(value: Float64, base: String, rounding_mode: RoundingMode = ROUND_DOWN) -> Size:
     """
-    Flexible rounding of a number to a multiple of the provided base. By default, it will round down (towards zero).
+    Flexible rounding of a float number to a multiple of the provided base.
+    By default, it will round down (towards zero).
+    
     Internally used for the rounding order sizes.
 
     For example:

@@ -2,6 +2,9 @@ from morrow import Morrow, TimeZone
 from std.os import abort
 from std.python import Python, PythonObject
 from std.python.numpy import copy_to_numpy_array
+from std.logger import Logger
+
+comptime logger = Logger()
 
 comptime Timestamp = Float64
 comptime Timeline = List[Timestamp]
@@ -22,7 +25,7 @@ def same_day(t1: Timestamp, t2: Timestamp, tz: TimeZone = UTC) -> Bool:
         var dt2 = Morrow.fromtimestamp(t2).astimezone(tz)
         return dt1.year == dt2.year and dt1.month == dt2.month and dt1.day == dt2.day
     except e:
-        print("Error in same_day:", e)
+        logger.error("Error in same_day:", e)
         return False
 
 def timestamp_format(timestamp: Timestamp, format: String = "YYYY-MM-DD HH:mm:ss") -> String:
@@ -39,6 +42,7 @@ def timestamp_format(timestamp: Timestamp, format: String = "YYYY-MM-DD HH:mm:ss
         var dt = Morrow.fromtimestamp(timestamp).astimezone(UTC)
         return dt.format(format)
     except:
+        logger.error("cannot parse")
         return "Parsing Error {}".format(timestamp)
 
 def from_iso(s: String) -> Float64:
@@ -52,6 +56,7 @@ def from_iso(s: String) -> Float64:
     try:
         return Morrow.fromisoformat(s).timestamp()
     except:
+        logger.error("invalid iso format", s)
         abort(s)
 
 struct Timeframe(ImplicitlyCopyable, Writable):
@@ -172,7 +177,7 @@ struct TimeSeries(Copyable, Writable):
 
         var values = self.data.get(metric)
         if values is None:
-            print("Metric not found in TimeSeries:", metric)
+            logger.warning("Metric not found in TimeSeries:", metric)
             return  
 
         var times_np = copy_to_numpy_array(self.timeline).astype('datetime64[s]')

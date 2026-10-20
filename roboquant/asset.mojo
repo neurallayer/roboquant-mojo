@@ -14,6 +14,7 @@ struct AssetType(ImplicitlyCopyable, Writable, Equatable, Hashable):
 
     var value: Int 
 
+
 @fieldwise_init
 struct Asset(ImplicitlyCopyable, Writable, KeyElement):
     """
@@ -34,6 +35,7 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement):
     var type: AssetType
     var contract_size: Size
  
+
     @staticmethod
     def Stock(symbol: String, currency: Currency = Currency.USD) -> Asset:
         """Create a new Stock with the provided symbol and currency."""

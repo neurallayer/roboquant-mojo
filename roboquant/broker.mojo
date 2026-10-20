@@ -6,6 +6,9 @@ from .asset import Asset
 from .feed import Event
 from .time import Timestamp, same_day, UTC
 from morrow import TimeZone
+from std.logger import Logger
+
+comptime logger = Logger()
 
 
 trait Broker:
@@ -57,16 +60,16 @@ struct SimBroker(Broker):
                 # We are updating an existing order, so we need to find it in the list of orders and replace it
                 var success = self.__replace_order(order)
                 if not success:
-                    print("Unknown Order")
+                    logger.info("Unknown Order", order)
 
     def __update_positions(mut self, event: Event) -> None:
-        for asset in self.positions:
-            var price = event.get_price(asset)
-            if price:
-                try:
+        try:
+            for asset in self.positions:
+                var price = event.get_price(asset)
+                if price:
                     self.positions[asset].mkt_price = price.value()
-                except e:
-                    print("error:", e)
+        except e:
+            logger.error("unexpected error:", e)
 
 
     def __has_expired(self, order: Order, time: Timestamp) -> Bool:
@@ -75,7 +78,7 @@ struct SimBroker(Broker):
         elif order.tif == TIF.DAY:
             return not same_day(order.time.value(), time, self.tz)
         
-        print("Unknown TIF:", order.tif)
+        logger.error("Unknown TIF:", order.tif)
         return False
 
     def __process_orders(mut self, ref event: Event) -> List[Trade]:

@@ -69,12 +69,11 @@ struct Event(Sized, Copyable):
             return t.price
 
     def get_price(self, asset: Asset) -> Optional[Float64]:
-        var item = self.items.get(asset)
-        if item:
-            return Self.__get_price(item.value())
-        return None
-
-
+        try: 
+            ref item = self.items[asset]
+            return Self.__get_price(item)
+        except:
+            return None
 
 
 
@@ -114,6 +113,8 @@ struct RandomWalkFeed:
         """Return the timeframe of the generated feed, which is
         determined by the timestamps of the first and last events.
         """
+        if not self.events:
+            return Timeframe.EMPTY
         return Timeframe(self.events[0].time, self.events[len(self.events)-1].time, True)
 
     def count_bars(self) -> Int:

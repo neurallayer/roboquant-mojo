@@ -95,9 +95,9 @@ struct SimBroker(Broker):
             elif self.__has_expired(order, event.time):
                 continue
 
-            var _price = event.get_price(order.asset)
-            if _price and order.is_executable(_price.value()):
-                var price = _price.value()
+            var price = event.get_price(order.asset)
+            if price and order.is_executable(price.value()):
+                var price = price.value()
                 var pos = self.positions.get(order.asset, Position.empty(order.asset)) 
                 pos += order.size
                 self.positions[order.asset] = pos^

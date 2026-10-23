@@ -4,3 +4,4 @@
 scratch/*
 *.mojoc
 lib/*
+.idea/*

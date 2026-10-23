@@ -49,9 +49,25 @@ comptime PriceItem = Variant[Bar, Quote, TradePrice]
 
 
 @fieldwise_init
+struct Price(Copyable):
+    var item: Variant[Bar, Quote, TradePrice]
+
+    def get_price(self) -> Float64:
+        if self.item.isa[Bar]():
+            ref c = self.item[Bar]
+            return c.close
+        elif self.item.isa[Quote]():
+            ref q = self.item[Quote]
+            return (q.ask_price + q.bid_price)/2
+        else:
+            ref t = self.item[TradePrice]
+            return t.price   
+
+
+@fieldwise_init
 struct Event(Sized, Copyable):
     var time: Float64
-    var items: Dict[Asset, PriceItem]
+    var items: Dict[Asset, Price]
 
     def __len__(self) -> Int:
         return len(self.items)
@@ -71,7 +87,7 @@ struct Event(Sized, Copyable):
     def get_price(self, asset: Asset) -> Optional[Float64]:
         try: 
             ref item = self.items[asset]
-            return Self.__get_price(item)
+            return item.get_price()
         except:
             return None
 
@@ -117,7 +133,7 @@ struct RandomWalkFeed:
             return Timeframe.EMPTY
         return Timeframe(self.events[0].time, self.events[len(self.events)-1].time, True)
 
-    def count_bars(self) -> Int:
+    def count_items(self) -> Int:
         var sum_bars = 0
         for evt in self.events:
             sum_bars += len(evt.items)
@@ -163,11 +179,11 @@ struct RandomWalkFeed:
             var prices = {asset:random_float64(100.0, 200.0) for asset in assets}
         
             while True:
-                var items = Dict[Asset, PriceItem](capacity=n_assets)
+                var items = Dict[Asset, Price](capacity=n_assets)
                 for asset in assets:
                     var price = prices[asset]
                     var bar = Bar(price, price*1.01, price*0.99, price, 10_000)
-                    var _ = items.insert(asset, bar^)
+                    var _ = items.insert(asset, Price(bar^))
                     prices[asset] = price * randn_float64(mean=1.0, standard_deviation=0.001)
                 var evt = Event(time, items^)
                 events.append(evt^)

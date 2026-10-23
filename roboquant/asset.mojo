@@ -1,6 +1,7 @@
 from .money import Currency, Amount
 from .order import Size
 from std.hashlib import Hasher
+from std.memory import ArcPointer
 from std.os import abort
 
 @fieldwise_init
@@ -62,4 +63,56 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement):
 
     def __ne__(self, other: Self, /) -> Bool:
         return self.symbol != other.symbol
+
+
+
+
+@fieldwise_init
+struct Asset2(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
+    """
+    The Asset struct represents a financial instrument that can be traded in the market.
+    It is uniquely identified by only its symbol, which is a string representing the asset's ticker or identifier.
+    The Asset struct also includes information about the currency in which the asset is denominated,
+    the type of asset (e.g., stock, option, forex, crypto), and the contract size for trading purposes.
+
+    Attributes:
+        symbol (String): The unique symbol or ticker of the asset.
+        currency (Currency): The currency in which the asset is denominated.
+        type (AssetType): The type of the asset (e.g., stock, option, forex, crypto).
+        contract_size (Size): The contract size for trading the asset.
+    """
+
+    var data: ArcPointer[Asset]
+   
+
+    @staticmethod
+    def Stock(symbol: String, currency: Currency = Currency.USD) -> Asset2:
+        """Create a new Stock with the provided symbol and currency."""
+        var data = Asset(symbol, currency, AssetType.STOCK, Size.one())
+        return Asset2(ArcPointer(data))
+
+    @staticmethod
+    def Forex(symbol: String, currency: Currency = Currency.USD, contract_size: Size = Size.one()) -> Asset2:
+        """Create a new Stock with the provided symbol and currency."""
+        var data = Asset(symbol, currency, AssetType.FOREX, contract_size)
+        return Asset2(ArcPointer(data))
+
+    def symbol(self) -> String:
+        return self.data[].symbol
+
+    def currency(self) -> Currency:
+        return self.data[].currency
+
+    def type(self) -> AssetType:
+        return self.data[].type
+
+    def value(self, size: Size, price: Float64) -> Amount:
+        """Return the monetary amount given the size and price."""
+        try:
+            ref asset = self.data[]
+            var value = Float64(asset.contract_size * size) * price
+            return Amount(asset.currency, value)
+        except:
+            abort()
+
 

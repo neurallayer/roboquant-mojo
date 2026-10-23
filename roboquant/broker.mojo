@@ -121,7 +121,7 @@ struct SimBroker(Broker):
 
         var bp = self.cash.convert_to(self.base_currency, event.time)
 
-        var account = Account(
+        return Account(
             last_update = event.time,
             positions = List(self.positions.values()),
             orders = self.orders.copy(),
@@ -129,4 +129,4 @@ struct SimBroker(Broker):
             cash=self.cash.copy(),
             trades=trades^
         )
-        return account^
+

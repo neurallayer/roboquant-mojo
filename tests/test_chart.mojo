@@ -1,5 +1,5 @@
 from std.time import perf_counter
-from roboquant.feed import RandomWalkFeed
+from roboquant.feed import random_walk
 from roboquant.trader import FlexTrader
 from roboquant.broker import SimBroker
 from roboquant.journal import EquityTracker
@@ -12,7 +12,7 @@ from std.python import Python, PythonObject
 
 
 def main() raises:
-    var feed = RandomWalkFeed(start="2025-01-01",end="2026-01-01", step_seconds = 3600.0 * 24.0, n_assets=8)
+    var feed = random_walk(start="2025-01-01",end="2026-01-01", step_seconds = 3600.0 * 24.0, n_assets=8)
     # var assets = List(feed.assets())
 
     var plt = Python.import_module("matplotlib.pyplot")
@@ -24,7 +24,7 @@ def main() raises:
     for idx, asset in enumerate(feed.assets()):
         var ax = axs[idx]
         var ts1 = feed.to_timeseries(asset)
-        ts1.plot(asset.symbol, ax)
+        ts1.plot(asset.symbol(), ax)
         ax.legend()
     fig.tight_layout()
     plt.show()

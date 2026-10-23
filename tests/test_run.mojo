@@ -1,5 +1,5 @@
 from std.time import perf_counter
-from roboquant.feed import RandomWalkFeed
+from roboquant.feed import random_walk, HistoricFeed
 from roboquant.trader import FlexTrader
 from roboquant.broker import SimBroker
 from roboquant.journal import EquityTracker
@@ -9,7 +9,7 @@ from roboquant.strategy import EMACrossOver
 from std.math import round
 
 
-def measure_run(feed: RandomWalkFeed, tf: Optional[Timeframe]) raises:
+def measure_run(feed: HistoricFeed, tf: Optional[Timeframe]) raises:
     var strategy = EMACrossOver()
     var trader = FlexTrader()
     var broker = SimBroker()
@@ -23,7 +23,7 @@ def measure_run(feed: RandomWalkFeed, tf: Optional[Timeframe]) raises:
 
 def main() raises:
     # 10-minute bars for 26 years
-    var feed = RandomWalkFeed(start="2000-01-01",end="2026-01-01", step_seconds = 600.0)
+    var feed = random_walk(start="2000-01-01",end="2026-01-01", step_seconds = 600.0)
     print("feed bars is ", feed.count_items())
   
     # Run over the entire feed timeframe

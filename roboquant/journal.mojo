@@ -46,7 +46,7 @@ struct EquityTracker(Journal, Writable, Defaultable):
 
     def to_timeseries(self) -> TimeSeries:
         """Convert the tracked equity and times into a TimeSeries object."""
-        return TimeSeries.univariate("equity", self.times, self.equity)
+        return TimeSeries.univariate("equity", self.times.copy(), self.equity.copy())
 
 
 @fieldwise_init
@@ -84,7 +84,7 @@ struct TradeTracker(Journal, Writable):
     var trades: List[Trade]
 
     def __init__(out self):
-        self.trades = []
+        self.trades = List[Trade](capacity=128)
 
     def track(mut self, account: Account, event: Event, signals: List[Signal], orders: List[Order]) -> None:
         self.trades.extend(account.trades.copy())
@@ -98,4 +98,4 @@ struct TradeTracker(Journal, Writable):
     def to_timeseries(self) -> TimeSeries:
         var times = [trade.time for trade in self.trades]
         var prices = [trade.price for trade in self.trades]
-        return TimeSeries.univariate("price", times, prices)
+        return TimeSeries.univariate("price", times^, prices^)

@@ -9,8 +9,8 @@ comptime logger = Logger()
 comptime Timestamp = Float64
 comptime Timeline = List[Timestamp]
 comptime UTC = TimeZone(0, "UTC")
-comptime TIME_MIN = from_iso("1900-01-01")
-comptime TIME_MAX = from_iso("2100-01-01")
+comptime TIME_MIN = -2208988800.0 # 1900-01-01
+comptime TIME_MAX = 4102444800.0 # 2100-01-01
 
 def now() -> Timestamp:
     try:
@@ -39,25 +39,22 @@ def timestamp_format(timestamp: Timestamp, format: String = "YYYY-MM-DD HH:mm:ss
     """
 
     try:
-        var dt = Morrow.fromtimestamp(timestamp).astimezone(UTC)
+        var dt = Morrow.get(timestamp)
         return dt.format(format)
     except:
         logger.error("cannot parse")
-        return "Parsing Error {}".format(timestamp)
+        return "{}".format(timestamp)
 
-def from_iso(s: String) -> Float64:
+def from_iso(s: String) raises -> Float64:
     """
     Convert an ISO format string to a timestamp.
     Args:
-        s (String): The ISO format string to convert.
+        s: The ISO format string to convert.
     Returns:
-        Float64: The converted timestamp.
+        The converted timestamp.
     """
-    try:
-        return Morrow.fromisoformat(s).timestamp()
-    except:
-        logger.error("invalid iso format", s)
-        abort(s)
+    return Morrow.fromisoformat(s).timestamp()
+ 
 
 struct Timeframe(ImplicitlyCopyable, Writable):
     """
@@ -77,7 +74,7 @@ struct Timeframe(ImplicitlyCopyable, Writable):
     var end: Timestamp
     var inclusive: Bool
 
-    def __init__(out self, start: String, end: String, inclusive: Bool = False):
+    def __init__(out self, start: String, end: String, inclusive: Bool = False) raises:
         self.start = from_iso(start)
         self.end = from_iso(end)
         self.inclusive = inclusive
@@ -91,12 +88,12 @@ struct Timeframe(ImplicitlyCopyable, Writable):
         """
         Split the Timeframe into n smaller Timeframes of equal duration.
         Args:
-            n (Int): The number of smaller Timeframes to create.
+            n: The number of smaller Timeframes to create.
         Returns:
-            List[Timeframe]: A list of n smaller Timeframes.
+            A list of n smaller Timeframes.
         """
 
-        var result:  List[Timeframe] = []
+        var result:  List[Timeframe] = List[Timeframe](capacity=n)
         var start = self.start
         var step = (self.end - self.start) / Float64(n)
         for idx in range(n):
@@ -115,33 +112,33 @@ struct Timeframe(ImplicitlyCopyable, Writable):
         return self.start <= time < self.end
     
     def write_to(self, mut writer: Some[Writer]):
-        var close_str = "]" if self.inclusive else ">"   
+        var close_str = "]" if self.inclusive else ">"
         var start = timestamp_format(self.start)
         var end = timestamp_format(self.end)
         writer.write("[", start, " - ", end, close_str)
- 
 
 struct TimeSeries(Copyable, Writable):
     """
     A TimeSeries represents a series of data points indexed by time.
     It is used to store and manage time-based data, such as financial market data.
     Attributes:
-        timeline (Timeline): A list of timestamps representing the time points of the series.
+        timeline: A list of timestamps representing the time points of the series.
         data: A dictionary of values corresponding to each timestamp in the series.
     """
 
     var timeline: Timeline
     var data: Dict[String, List[Float64]]
 
-    def __init__(out self, timeline: Timeline, data: Dict[String, List[Float64]]):
-        self.timeline = timeline.copy()
-        self.data = data.copy()
-        var l = len(timeline)
+    def __init__(out self, var timeline: Timeline, var data: Dict[String, List[Float64]]):
+        var l = len(timeline)       
         for data in data.values():
             assert len(data) == l, "different len" 
 
+        self.timeline = timeline^
+        self.data = data^
+
     @staticmethod
-    def univariate(name: String, timeline: Timeline, data: List[Float64]) -> Self:
+    def univariate(name: String, var timeline: Timeline, var data: List[Float64]) -> Self:
         """
         Create a univariate TimeSeries, so only a single variable.
         Args:
@@ -151,8 +148,8 @@ struct TimeSeries(Copyable, Writable):
         Returns:
             TimeSeries: A univariate TimeSeries instance.
         """
-        var values_dict: Dict[String, List[Float64]] = {name: data.copy()}
-        return Self(timeline, values_dict)  
+        var values_dict: Dict[String, List[Float64]] = {name: data^}
+        return Self(timeline^, values_dict^)  
   
 
     def plot(self, *metrics: String) raises -> None:

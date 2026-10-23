@@ -1,4 +1,4 @@
-from .feed import PriceItem, RandomWalkFeed, Quote
+from .feed import PriceItem, HistoricFeed
 from .broker import Broker
 from .trader import Trader
 from .time import Timeframe, TIME_MIN
@@ -8,7 +8,7 @@ from .journal import Journal
 
 
 def run(
-        feed: RandomWalkFeed,
+        feed: HistoricFeed,
         mut strategy: Some[Strategy],
         mut trader: Some[Trader],
         mut broker: Some[Broker],

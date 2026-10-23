@@ -1,4 +1,4 @@
-from .time import Timestamp
+from .time import Timestamp, TIME_MIN
 from std.os import abort
 
 comptime USD = Currency.USD
@@ -28,9 +28,9 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     def __rmatmul__(self, other: Float64) -> Amount:
         """Allow the use of the @ operator to create an Amount with the specified currency and value.
         Args:
-            other (Float64): The monetary value to be associated with the currency.
+            other: The monetary value to be associated with the currency.
         Returns:
-            Amount: An Amount instance representing the specified value in the given currency.
+            An Amount instance representing the specified value in the given currency.
 
         Example:
             usd_amount = 100.0@USD  # Creates an Amount of 100 USD
@@ -69,9 +69,9 @@ struct Converter(ImplicitlyCopyable):
 
     def __init__(out self):
         self._rates = {}
-        self._rates[Currency.USD] = ([0.0], [1.1])
-        self._rates[Currency.EUR] = ([0.0], [1.0])
-        self._rates[Currency.GBP] = ([0.0], [0.9])
+        self._rates[Currency.USD] = ([TIME_MIN], [1.1])
+        self._rates[Currency.EUR] = ([TIME_MIN], [1.0])
+        self._rates[Currency.GBP] = ([TIME_MIN], [0.9])
 
 
     def __init__(out self, *, copy: Self):
@@ -92,14 +92,13 @@ struct Converter(ImplicitlyCopyable):
         except e:
             abort(String(e))
     
+comptime _CONVERTER = Converter()
 
 
 @fieldwise_init
 struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
     """Holds the monetary amount of a single currency. 
     Should be threated like an immutable struct."""
-
-    comptime _CONVERTER = Converter()
 
     var currency: Currency
     var value: Float64
@@ -127,7 +126,7 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
         if self.value == 0:
             return Self(currency, 0.0)
 
-        var result = Self._CONVERTER.convert(self, currency, time)
+        var result = _CONVERTER.convert(self, currency, time)
         return result
 
     def __add__(self, other: Amount) -> Wallet:

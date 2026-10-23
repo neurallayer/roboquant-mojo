@@ -88,9 +88,9 @@ struct EMACrossOver(PricingStrategy):
     var history: Dict[Asset, Tuple[Int, Float64, Float64]]
     var min_n: Int
 
-    def __init__(out self, n: Int = 10):
+    def __init__(out self, min_n: Int = 10):
         self.history = {}
-        self.min_n = n
+        self.min_n = min_n
 
     def create_rating(mut self, asset: Asset, price: Float64) -> Float64:
     

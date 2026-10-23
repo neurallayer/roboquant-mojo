@@ -26,7 +26,7 @@ struct Trade(Copyable, Writable):
 
     def pnl(self) -> Amount:
         """The realized Profit and Loss amount by this trade."""
-        return Amount(self.asset.currency, self.pnl_value)
+        return Amount(self.asset.currency(), self.pnl_value)
 
     def value(self) -> Amount:
         return self.asset.value(self.size, self.price)
@@ -144,19 +144,19 @@ struct Account(Writable, Copyable):
 
         writer.write("\npositions   : ")
         for pos in self.positions:
-            writer.write(pos.size, "@", pos.asset.symbol, " ")
+            writer.write(pos.size, "@", pos.asset.symbol(), " ")
         else:
             writer.write("none")
  
         writer.write("\norders      : ")
         for order in self.orders:
-            writer.write(order.size, "@", order.asset.symbol, " ") 
+            writer.write(order.size, "@", order.asset.symbol(), " ") 
         else:
             writer.write("none")
 
         writer.write("\ntrades      : ")
         for trade in self.trades:
-            writer.write(trade.size, "@", trade.asset.symbol, " ") 
+            writer.write(trade.size, "@", trade.asset.symbol(), " ") 
         else:
             writer.write("none")
 

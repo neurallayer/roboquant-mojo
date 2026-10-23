@@ -69,7 +69,6 @@ struct FlexTrader(Trader):
 
         return orders^
 
-
     def get_order_size(self, signal: Signal, price: Float64, time: Timestamp , step_size: String) -> Size:
         """Calculate the order size based on the signal rating, asset price, order amount.
         Time is used when a conversion is needed between the asset currency and the order amount currency.

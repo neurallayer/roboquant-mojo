@@ -3,6 +3,7 @@ channels = ["https://conda.modular.com/max", "https://repo.prefix.dev/modular-co
 name = "roboquant"
 platforms = ["osx-arm64"]
 version = "0.1.0"
+preview = ["pixi-build"]
 
 [tasks]
 build = "pixi run mojo precompile roboquant/ -o lib/roboquant.mojoc"
@@ -14,9 +15,24 @@ test_evt = { cmd = "pixi run mojo -I lib -D ASSERT=all tests/test_event.mojo", d
 
 
 [dependencies]
-mojo = ">=1.1.0,<2"
+mojo = ">=1.1.0,<1.2.0"
 decimo = ">=0.15.0,<0.17"
 morrow = ">=1.1.0,<2.0"
 python = "==3.14"
 matplotlib = ">=3.11.2,<4"
 numpy = ">=2.5.3,<3"
+mojo_datetime = ">=0.1.3,<0.5"
+
+
+
+[package.build]
+backend = { name = "pixi-build-mojo", version = "0.*" }
+
+[package.host-dependencies]
+mojo-compiler = ">=1.1.0,<1.2.0"
+
+[package.build-dependencies]
+mojo-compiler = ">=1.1.0,<1.2.0"
+
+[package.run-dependencies]
+mojo-compiler = ">=1.1.0,<1.2.0"

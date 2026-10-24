@@ -32,11 +32,11 @@ struct Signal(Writable, ImplicitlyCopyable):
         return self.type == SignalType.ENTRY_EXIT or self.type == SignalType.ENTRY
 
     @staticmethod
-    def buy(asset: Asset) -> Signal:
+    def buy(var asset: Asset) -> Signal:
         return Self(asset, 1.0)
 
     @staticmethod
-    def sell(asset: Asset) -> Signal:
+    def sell(var asset: Asset) -> Signal:
         return Self(asset, -1.0)
 
     def is_buy(self) -> Bool:

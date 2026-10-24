@@ -44,7 +44,10 @@ struct SimBroker(Broker):
     def __replace_order(mut self, new_order: Order) -> Bool:
         for idx, order in enumerate(self.orders):
             if order.id == new_order.id:
-                self.orders[idx] = order
+                if new_order.size:
+                    self.orders[idx] = order
+                else:
+                    ref _ = self.orders.pop(idx)
                 return True
         return False
 

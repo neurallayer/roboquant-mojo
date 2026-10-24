@@ -37,13 +37,11 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
         """
         return Amount(self, other)
 
-struct ExchangeRate(ImplicitlyCopyable, Comparable):
+struct ExchangeRate(ImplicitlyCopyable):
 
     var time: Timestamp
     var rate: Float64
 
-    def __lt__(self, rhs: Self) -> Bool:
-        return self.rate < rhs.rate
 
 
 def bisect_left[T: Comparable & Movable](arr: List[T], x: T) -> Int:

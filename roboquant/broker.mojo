@@ -4,8 +4,7 @@ from .account import Account, Position, Trade
 from .money import Wallet, Amount, Currency
 from .asset import Asset
 from .feed import Event
-from .time import Timestamp, same_day, UTC
-from morrow import TimeZone
+from .time import Timestamp, same_day, UTC, TimeZone
 from std.logger import Logger
 
 comptime logger = Logger()
@@ -26,7 +25,7 @@ trait Broker:
 struct SimBroker(Broker):
     """A simulated broker that tracks positions and a virtual cash wallet while placing orders."""
 
-    var orders: List[Order]
+    var orders: Dict[String, Order]
     var positions: Dict[Asset, Position]
     var cash: Wallet
     var base_currency: Currency
@@ -34,43 +33,33 @@ struct SimBroker(Broker):
     var tz: TimeZone
 
     def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), timezone: TimeZone = UTC):
-        self.orders = []
+        self.orders = {}
         self.positions = {}
         self.cash = Wallet(deposit)
         self.base_currency = deposit.currency
         self.order_id = 0
         self.tz = timezone
 
-    def __replace_order(mut self, new_order: Order) -> Bool:
-        for idx, order in enumerate(self.orders):
-            if order.id == new_order.id:
-                if new_order.size:
-                    self.orders[idx] = order
-                else:
-                    ref _ = self.orders.pop(idx)
-                return True
-        return False
-
     def place_orders(mut self, orders: List[Order]) -> None:
         for var order in orders:
-            if not order.id:
-                # We are creating a new order, so we need to assign an ID and add it to the list of orders
-                assert not order.size.is_zero(), "New order cannot have size zero"
-                self.order_id += 1
-                order.id = String(self.order_id)
-                self.orders.append(order)
-            else:
-                # We are updating an existing order, so we need to find it in the list of orders and replace it
-                var success = self.__replace_order(order)
-                if not success:
-                    logger.info("Unknown Order", order)
+
+            match order:
+                case Order(id=.None): # new order
+                    self.order_id += 1
+                    order.id = String(self.order_id)
+                    self.orders[order.id.value()] = order
+                case Order(size=size) if size.is_zero(): # cancel order
+                    self.__remove_order(order)
+                case Order(id=.Some(id)) if id in self.orders: # update order
+                    self.orders[id] = order
+                case _: 
+                    logger.warning("ignored order", order)
 
     def __update_positions(mut self, event: Event) -> None:
         try:
             for asset in self.positions:
-                var price = event.get_price(asset)
-                if price:
-                    self.positions[asset].mkt_price = price.value()
+                if case .Some(price) = event.get_price(asset):
+                    self.positions[asset].mkt_price = price
         except e:
             logger.error("unexpected error:", e)
 
@@ -84,36 +73,49 @@ struct SimBroker(Broker):
         logger.error("Unknown TIF:", order.tif)
         return False
 
+    def __remove_order(mut self, order: Order):
+        try:
+            var _ = self.orders.pop(order.id.value())
+        except:
+            pass
+
+    def __close_position(mut self, pos: Position):
+        try:
+            var _ = self.positions.pop(pos.asset)
+        except:
+            pass
+
+
     def __process_orders(mut self, ref event: Event) -> List[Trade]:
         if not self.orders:
             return []
     
         var trades = List[Trade]()
-        var remaining_orders = List[Order]()
-  
-        for ref order in self.orders:
-            assert order.id != None, "Should have order-id assigned"
-            if order.remaining().is_zero():
+      
+        for var order in self.orders.values():
+            if order.remaining().is_zero() or order.is_cancelled():
+                self.__remove_order(order)
                 continue
             
-            if order.time is None:
+            if not order.time:
                 order.time = event.time
             elif self.__has_expired(order, event.time):
+                self.__remove_order(order)
                 continue
 
-            var price = event.get_price(order.asset)
-            if price and order.is_executable(price.value()):
-                var price = price.value()
-                var pos = self.positions.get(order.asset, Position.empty(order.asset)) 
-                pos += order.size
-                self.positions[order.asset] = pos^
-                self.cash.withdraw(order.value(price))
-                var trade = Trade(order.asset, order.size, price, 0.0, event.time)
-                trades.append(trade^)
-            else:
-                remaining_orders.append(order)
-
-        self.orders = remaining_orders^
+            if case .Some(price) = event.get_price(order.asset):
+                if order.is_executable(price):
+                    var pos = self.positions.get(order.asset, Position.empty(order.asset)) 
+                    pos += order.size
+                    if pos.size.is_zero():
+                        self.__close_position(pos)
+                    else:
+                        self.positions[order.asset] = pos^
+                    self.cash.withdraw(order.value(price))
+                    var trade = Trade(order.asset, order.size, price, 0.0, event.time)
+                    trades.append(trade^)
+                    self.__remove_order(order)
+              
         return trades^
     
     def sync(mut self, event: Event) -> Account:
@@ -127,7 +129,7 @@ struct SimBroker(Broker):
         return Account(
             last_update = event.time,
             positions = List(self.positions.values()),
-            orders = self.orders.copy(),
+            orders = List(self.orders.values()),
             buying_power=bp,
             cash=self.cash.copy(),
             trades=trades^

@@ -3,7 +3,6 @@ from .time import Timestamp, UTC, timestamp_format
 from .asset import Asset
 from .order import Order, Size
 from std.os import abort
-from morrow import Morrow
 
 
 @fieldwise_init

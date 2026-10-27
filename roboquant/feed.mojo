@@ -1,10 +1,9 @@
 from .asset import Asset
-from .time import Timestamp, Timeframe, TimeSeries
+from .time import Timestamp, Timeframe, TimeSeries, from_iso
 from .order import Size
 
 from std.utils import Variant
 from std.random import random_float64, randn_float64, seed, random_ui64, shuffle
-from morrow import Morrow
 from std.os import abort
 from std.collections import Set
 
@@ -50,6 +49,7 @@ comptime PriceItem = Variant[Bar, Quote, TradePrice]
 
 @fieldwise_init
 struct Price(Copyable):
+    
     var item: Variant[Bar, Quote, TradePrice]
 
     def get_price(self) -> Float64:
@@ -153,12 +153,14 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
             symbol += chr(Int(n) + ord('A'))
         symbols.add(symbol)
 
+    var step_ns = Int(step_seconds * 1_000_000_000.0)
     var assets = {Asset.Stock(symbol) for symbol in symbols}
-    var time = Morrow.get(start).float_timestamp()
-    var stop = Morrow.get(end).float_timestamp()
-    assert stop > time, "end has to be after start"
+    var time = from_iso(start)
+    var stop = from_iso(end)
+    if stop <= time:
+        raise Error("end has to be after start")
 
-    var capacity = Int((stop - time) / step_seconds) + 1
+    var capacity = Int((stop - time) / step_ns) + 1
     var events = List[Event](capacity=capacity)
 
     # Select a different start price for each asset
@@ -173,7 +175,7 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
             prices[asset] = price * randn_float64(mean=1.0, standard_deviation=0.001)
         var evt = Event(time, items^)
         events.append(evt^)
-        time += step_seconds
+        time += step_ns
         if time >= stop:
             break
 

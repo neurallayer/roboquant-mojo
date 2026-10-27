@@ -1,6 +1,6 @@
 from .money import Currency, Amount
 from .order import Size
-from std.hashlib import Hasher
+from std.hash import Hasher
 from std.memory import ArcPointer
 from std.os import abort
 

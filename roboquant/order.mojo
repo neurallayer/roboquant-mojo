@@ -127,6 +127,9 @@ struct Order(ImplicitlyCopyable, Writable):
         """
         return self.size < 0
 
+    def is_cancelled(self) -> Bool:
+        return self.size.is_zero()
+
     def modify(self, size: Optional[Size], limit: Optional[Float64]) -> Order:
         """Create a modify order. You can modify the size and/or limit of an existing order.
         If a parameter is not provided, the existing value will be retained.

@@ -1,32 +1,28 @@
-from morrow import Morrow, TimeZone
 from std.os import abort
 from std.python import Python, PythonObject
 from std.python.numpy import copy_to_numpy_array
 from std.logger import Logger
+from std.time import time
+
 
 comptime logger = Logger()
 
-comptime Timestamp = Float64
+# Time since unix epoch in ns
+comptime Timestamp = Int
+comptime TimeZone = String
 comptime Timeline = List[Timestamp]
-comptime UTC = TimeZone(0, "UTC")
-comptime TIME_MIN = -2208988800.0 # 1900-01-01
-comptime TIME_MAX = 4102444800.0 # 2100-01-01
+comptime UTC = "UTC"
+comptime TIME_MIN = Timestamp(0) # 1900-01-01
+comptime TIME_MAX = Timestamp(4102444800.0) # 2100-01-01
 
 def now() -> Timestamp:
-    try:
-        return Morrow.utcnow().timestamp()
-    except e:
-        abort(String(e))
+    return time._realtime_nanoseconds()
 
-def same_day(t1: Timestamp, t2: Timestamp, tz: TimeZone = UTC) -> Bool:
+def same_day(t1: Timestamp, t2: Timestamp, tz: String = UTC) -> Bool:
     """Check if two timestamps are on the same day given a timezone."""
-    try:
-        var dt1 = Morrow.fromtimestamp(t1).astimezone(tz)
-        var dt2 = Morrow.fromtimestamp(t2).astimezone(tz)
-        return dt1.year == dt2.year and dt1.month == dt2.month and dt1.day == dt2.day
-    except e:
-        logger.error("Error in same_day:", e)
-        return False
+    var dt1 = UTCDateTime.from_timestamp(t1)
+    var dt2 = UTCDateTime.from_timestamp(t2)
+    return dt1.same_day(dt2)
 
 def timestamp_format(timestamp: Timestamp, format: String = "YYYY-MM-DD HH:mm:ss") -> String:
     """
@@ -38,14 +34,11 @@ def timestamp_format(timestamp: Timestamp, format: String = "YYYY-MM-DD HH:mm:ss
         String: The formatted timestamp as a string.
     """
 
-    try:
-        var dt = Morrow.get(timestamp)
-        return dt.format(format)
-    except:
-        logger.error("cannot parse")
-        return "{}".format(timestamp)
+    var dt = UTCDateTime.from_timestamp(timestamp)
+    return dt.format(format)
+   
 
-def from_iso(s: String) raises -> Float64:
+def from_iso(s: String) raises -> Timestamp:
     """
     Convert an ISO format string to a timestamp.
     Args:
@@ -53,7 +46,11 @@ def from_iso(s: String) raises -> Float64:
     Returns:
         The converted timestamp.
     """
-    return Morrow.fromisoformat(s).timestamp()
+    var args = s.split("-")
+    var y = Int(args[0])
+    var m = Int(args[1])
+    var d = Int(args[2])
+    return UTCDateTime(y,m,d,0,0,0,0).timestamp()
  
 
 struct Timeframe(ImplicitlyCopyable, Writable):
@@ -95,7 +92,7 @@ struct Timeframe(ImplicitlyCopyable, Writable):
 
         var result:  List[Timeframe] = List[Timeframe](capacity=n)
         var start = self.start
-        var step = (self.end - self.start) / Float64(n)
+        var step = (self.end - self.start) / n
         for idx in range(n):
             var end = start + step
             if end > self.end:
@@ -171,16 +168,105 @@ struct TimeSeries(Copyable, Writable):
         Plot the TimeSeries data using a plotting library.
         This method visualizes the time series data for analysis and interpretation.
         """
-
-        var values = self.data.get(metric)
-        if values is None:
+        if  case .Some(values) = self.data.get(metric):
+            var floats = [Float64(ts)/1_000_000_000.0 for ts in self.timeline]
+            var times_np = copy_to_numpy_array(floats).astype('datetime64[s]')
+            var values_np = copy_to_numpy_array(values)
+            ax.plot(times_np, values_np, label=metric)
+        else:
             logger.warning("Metric not found in TimeSeries:", metric)
             return  
-
-        var times_np = copy_to_numpy_array(self.timeline).astype('datetime64[s]')
-        var values_np = copy_to_numpy_array(values.value())
-
-        ax.plot(times_np, values_np, label=metric)
         
     
+def _pad_zero[I: Intable](value: I, width: Int) -> String:
+    """Format `value` with leading zeros up to `width` characters."""
+   return String(Int(value)).ascii_rjust(width, "0")
 
+@fieldwise_init
+struct UTCDateTime(Copyable, Movable, Writable):
+    var year: Int
+    var month: Int
+    var day: Int
+    var hour: Int
+    var minute: Int
+    var second: Int
+    var nanosecond: Int
+
+    @staticmethod
+    def now() -> Self:
+        return Self.from_timestamp(now())
+
+    def same_day(self, other: UTCDateTime, offset: Int = 0) -> Bool:
+        return self.year == other.year and self.month == other.month and self.day == other.day
+
+    @staticmethod
+    def from_timestamp(t: Timestamp) -> Self:
+        return timestamp_ns_to_utc(t)
+
+    def format(self, format: String) -> String:
+        return String(self.year) + String(self.month) + String(self.day)
+
+    def timestamp(self) -> Timestamp:
+        """Convert this UTC datetime to a Unix timestamp in nanoseconds."""
+        var y = self.year - (1 if self.month <= 2 else 0)
+        var era = (y if y >= 0 else y - 399) // 400
+        var yoe = y - era * 400
+        var m = self.month
+        var mp = m + 9 if m > 2 else m + 9 - 12
+        var doy = (153 * mp + 2) // 5 + self.day - 1
+        var doe = yoe * 365 + yoe // 4 - yoe // 100 + doy
+        var days = era * 146097 + doe - 719468
+
+        var seconds = days * 86400 + self.hour * 3600 + self.minute * 60 + self.second
+        return seconds * 1_000_000_000 + self.nanosecond
+
+    def write_to(self, mut writer: Some[Writer]):
+        """Write the datetime in ISO-8601 form: 2024-01-15T12:34:56Z."""
+        writer.write(_pad_zero(self.year, 4))
+        writer.write("-")
+        writer.write(_pad_zero(self.month, 2))
+        writer.write("-")
+        writer.write(_pad_zero(self.day, 2))
+        writer.write("T")
+        writer.write(_pad_zero(self.hour, 2))
+        writer.write(":")
+        writer.write(_pad_zero(self.minute, 2))
+        writer.write(":")
+        writer.write(_pad_zero(self.second, 2))
+        var str_ns = String(Float64(self.nanosecond)/1_000_000_000)[codepoint=1:]
+        writer.write(str_ns)
+        writer.write("Z")
+
+
+def __civil_from_days(days: Int) -> Tuple[Int, Int, Int]:
+    """Convert days since 1970-01-01 to (year, month, day)."""
+    var z = days + 719468
+    var era = (z if z >= 0 else z - 146096) // 146097
+    var doe = z - era * 146097
+    var yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
+    var y = yoe + era * 400
+    var doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
+    var mp = (5 * doy + 2) // 153
+    var d = doy - (153 * mp + 2) // 5 + 1
+    var m = mp + 3 if mp < 10 else mp - 9
+    var year = y + 1 if m <= 2 else y
+    return (year, m, d)
+
+
+def timestamp_ns_to_utc(total_ns: Int) -> UTCDateTime:
+    """Convert Unix timestamp in NANOSECONDS since epoch to UTC datetime."""
+    # Floor division gives correct behavior for negative (pre-1970) timestamps
+    var total_seconds = total_ns // 1_000_000_000
+    var nanosecond = total_ns - total_seconds * 1_000_000_000
+    # nanosecond is now in [0, 999_999_999] even for negative total_ns
+
+    var days = total_seconds // 86400
+    var sod = total_seconds - days * 86400
+
+    var hour = sod // 3600
+    var minute = (sod % 3600) // 60
+    var second = sod % 60
+
+    var (year, month, day) = __civil_from_days(days)
+
+    return UTCDateTime(year, month, day, hour, minute, second, nanosecond)

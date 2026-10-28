@@ -1,5 +1,6 @@
 from .asset import Asset
-from .feed import Event
+from .feed import Event, Bar
+from .time import Timestamp
 
 
 @fieldwise_init
@@ -55,6 +56,7 @@ trait Strategy:
     def create_signals(mut self, event: Event) -> List[Signal]:
         ...
 
+
 trait PricingStrategy(Strategy):
 
     comptime BUY = 1.0
@@ -79,6 +81,30 @@ trait PricingStrategy(Strategy):
         indicates no signal. The rating can be used to determine the strength of the signal, but 
         is typically normalized to a value between -1 and 1."""
         ...
+
+
+trait CandleStrategy(Strategy):
+
+    def create_signals(mut self, event: Event) -> List[Signal]:
+        var signals: List[Signal]  = []
+        for item in event.items.items():  
+            ref price = item.value.item
+            if price.isa[Bar]():
+                ref asset = item.key
+                var rating = self.create_rating(asset, price[Bar])
+                if rating:
+                    var signal = Signal(asset, rating)
+                    signals.append(signal)
+                
+        return signals^
+
+    def create_rating(mut self, asset: Asset, bar: Bar) -> Float64:
+        """Create rating for the given asset and bars. The rating is a Float64 value where
+        a positive value indicates a buy signal, a negative value indicates a sell signal, and zero
+        indicates no signal. The rating can be used to determine the strength of the signal, but 
+        is typically normalized to a value between -1 and 1."""
+        ...
+
 
 struct EMACrossOver(PricingStrategy):
     """Two different Exponential Moving Averages where a signal is generated

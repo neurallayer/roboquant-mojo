@@ -8,52 +8,13 @@ from std.time import time
 comptime logger = Logger()
 
 # Time since unix epoch in ns
-comptime Timestamp = Int
-comptime TimeZone = String
 comptime Timeline = List[Timestamp]
-comptime UTC = "UTC"
-comptime TIME_MIN = Timestamp(0) # 1900-01-01
-comptime TIME_MAX = Timestamp(4102444800.0) # 2100-01-01
+comptime TIME_MIN = Timestamp(-2208988800000000000) # 1900-01-01
+comptime TIME_MAX = Timestamp(4102444800000000000) # 2100-01-01
 
-def now() -> Timestamp:
-    return time._realtime_nanoseconds()
 
-def same_day(t1: Timestamp, t2: Timestamp, tz: String = UTC) -> Bool:
-    """Check if two timestamps are on the same day given a timezone."""
-    var dt1 = UTCDateTime.from_timestamp(t1)
-    var dt2 = UTCDateTime.from_timestamp(t2)
-    return dt1.same_day(dt2)
 
-def timestamp_format(timestamp: Timestamp, format: String = "YYYY-MM-DD HH:mm:ss") -> String:
-    """
-    Format a timestamp into a human-readable string using the specified format.
-    Args:
-        timestamp (Timestamp): The timestamp to format.
-        format (String): The format string to use for formatting the timestamp.
-    Returns:
-        String: The formatted timestamp as a string.
-    """
-
-    var dt = UTCDateTime.from_timestamp(timestamp)
-    return dt.format(format)
-   
-
-def from_iso(s: String) raises -> Timestamp:
-    """
-    Convert an ISO format string to a timestamp.
-    Args:
-        s: The ISO format string to convert.
-    Returns:
-        The converted timestamp.
-    """
-    var args = s.split("-")
-    var y = Int(args[0])
-    var m = Int(args[1])
-    var d = Int(args[2])
-    return UTCDateTime(y,m,d,0,0,0,0).timestamp()
- 
-
-struct Timeframe(ImplicitlyCopyable, Writable):
+struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
     """
     Represents a time interval with a start and end timestamp, and an optional inclusive flag.
     The Timeframe struct provides methods to check if a timestamp is within the interval,
@@ -72,8 +33,8 @@ struct Timeframe(ImplicitlyCopyable, Writable):
     var inclusive: Bool
 
     def __init__(out self, start: String, end: String, inclusive: Bool = False) raises:
-        self.start = from_iso(start)
-        self.end = from_iso(end)
+        self.start = Timestamp.from_iso(start)
+        self.end = Timestamp.from_iso(end)
         self.inclusive = inclusive
 
     def __init__(out self, start: Timestamp, end: Timestamp, inclusive: Bool = False):
@@ -110,8 +71,8 @@ struct Timeframe(ImplicitlyCopyable, Writable):
     
     def write_to(self, mut writer: Some[Writer]):
         var close_str = "]" if self.inclusive else ">"
-        var start = timestamp_format(self.start)
-        var end = timestamp_format(self.end)
+        var start = self.start.format()
+        var end = self.end.format()
         writer.write("[", start, " - ", end, close_str)
 
 struct TimeSeries(Copyable, Writable):
@@ -169,7 +130,7 @@ struct TimeSeries(Copyable, Writable):
         This method visualizes the time series data for analysis and interpretation.
         """
         if  case .Some(values) = self.data.get(metric):
-            var floats = [Float64(ts)/1_000_000_000.0 for ts in self.timeline]
+            var floats = [ts.to_unix_timestamp() for ts in self.timeline]
             var times_np = copy_to_numpy_array(floats).astype('datetime64[s]')
             var values_np = copy_to_numpy_array(values)
             ax.plot(times_np, values_np, label=metric)
@@ -194,17 +155,18 @@ struct UTCDateTime(Copyable, Movable, Writable):
 
     @staticmethod
     def now() -> Self:
-        return Self.from_timestamp(now())
+        return Self.from_timestamp(time._realtime_nanoseconds())
 
     def same_day(self, other: UTCDateTime, offset: Int = 0) -> Bool:
         return self.year == other.year and self.month == other.month and self.day == other.day
 
     @staticmethod
     def from_timestamp(t: Timestamp) -> Self:
-        return timestamp_ns_to_utc(t)
+        return t.to_datetime()
 
     def format(self, format: String) -> String:
         return String(self.year) + String(self.month) + String(self.day)
+
 
     def timestamp(self) -> Timestamp:
         """Convert this UTC datetime to a Unix timestamp in nanoseconds."""
@@ -212,13 +174,14 @@ struct UTCDateTime(Copyable, Movable, Writable):
         var era = (y if y >= 0 else y - 399) // 400
         var yoe = y - era * 400
         var m = self.month
-        var mp = m + 9 if m > 2 else m + 9 - 12
+        var mp = m - 3 if m > 2 else m + 9
         var doy = (153 * mp + 2) // 5 + self.day - 1
         var doe = yoe * 365 + yoe // 4 - yoe // 100 + doy
         var days = era * 146097 + doe - 719468
 
         var seconds = days * 86400 + self.hour * 3600 + self.minute * 60 + self.second
         return seconds * 1_000_000_000 + self.nanosecond
+
 
     def write_to(self, mut writer: Some[Writer]):
         """Write the datetime in ISO-8601 form: 2024-01-15T12:34:56Z."""
@@ -238,35 +201,106 @@ struct UTCDateTime(Copyable, Movable, Writable):
         writer.write("Z")
 
 
-def __civil_from_days(days: Int) -> Tuple[Int, Int, Int]:
-    """Convert days since 1970-01-01 to (year, month, day)."""
-    var z = days + 719468
-    var era = (z if z >= 0 else z - 146096) // 146097
-    var doe = z - era * 146097
-    var yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
-    var y = yoe + era * 400
-    var doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
-    var mp = (5 * doy + 2) // 153
-    var d = doy - (153 * mp + 2) // 5 + 1
-    var m = mp + 3 if mp < 10 else mp - 9
-    var year = y + 1 if m <= 2 else y
-    return (year, m, d)
+struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equatable, Writable, Hashable):
+
+    var time: Int
+
+    def __lt__(self, other: Timestamp) -> Bool:
+        return self.time < other.time
+
+    def __le__(self, other: Timestamp) -> Bool:
+        return self.time <= other.time
+
+    def __gt__(self, other: Timestamp) -> Bool:
+        return self.time > other.time
+
+    def __ge__(self, other: Timestamp) -> Bool:
+        return self.time >= other.time
+
+    def __sub__(self, other: Timestamp) -> Int:
+        return self.time - other.time
+
+    def __add__(self, other_ns: Int) -> Timestamp:
+        return Timestamp(self.time + other_ns)
+
+    def __iadd__(mut self, other_ns: Int):
+        self.time += other_ns
+
+    def same_day(self,other: Timestamp, offset:Int = 0) -> Bool:
+        """Check if two timestamps are on the same day given a timezone."""
+        var dt1 = self + offset * 1_000_000_000
+        var dt2 = other + offset * 1_000_000_000
+        return dt1.to_datetime().same_day(dt2.to_datetime())
+
+    @implicit
+    def __init__(out self, time: Int):
+        self.time = time
+
+    @staticmethod
+    def from_iso(s: String) raises -> Timestamp:
+        """
+        Convert an ISO format string to a timestamp.
+        Args:
+            s: The ISO format string to convert.
+        Returns:
+            The converted timestamp.
+        """
+        var args = s.split("-")
+        var y = Int(args[0])
+        var m = Int(args[1])
+        var d = Int(args[2])
+        return UTCDateTime(y,m,d,0,0,0,0).timestamp()
+
+    @staticmethod
+    def now() -> Timestamp:
+        return Timestamp(time._realtime_nanoseconds())
+
+    def to_unix_timestamp(self) -> Float64:
+        return Float64(self.time)/1_000_000_000.0 
+
+    @staticmethod
+    def __civil_from_days(days: Int) -> Tuple[Int, Int, Int]:
+        """Convert days since 1970-01-01 to (year, month, day)."""
+        var z = days + 719468
+        var era = (z if z >= 0 else z - 146096) // 146097
+        var doe = z - era * 146097
+        var yoe = (doe - doe // 1460 + doe // 36524 - doe // 146096) // 365
+        var y = yoe + era * 400
+        var doy = doe - (365 * yoe + yoe // 4 - yoe // 100)
+        var mp = (5 * doy + 2) // 153
+        var d = doy - (153 * mp + 2) // 5 + 1
+        var m = mp + 3 if mp < 10 else mp - 9
+        var year = y + 1 if m <= 2 else y
+        return (year, m, d)
 
 
-def timestamp_ns_to_utc(total_ns: Int) -> UTCDateTime:
-    """Convert Unix timestamp in NANOSECONDS since epoch to UTC datetime."""
-    # Floor division gives correct behavior for negative (pre-1970) timestamps
-    var total_seconds = total_ns // 1_000_000_000
-    var nanosecond = total_ns - total_seconds * 1_000_000_000
-    # nanosecond is now in [0, 999_999_999] even for negative total_ns
+    def to_datetime(self) -> UTCDateTime:
+        """Convert Unix timestamp in NANOSECONDS since epoch to UTC datetime."""
+        # Floor division gives correct behavior for negative (pre-1970) timestamps
+        var total_ns = self.time
+        var total_seconds = total_ns // 1_000_000_000
+        var nanosecond = total_ns - total_seconds * 1_000_000_000
+        # nanosecond is now in [0, 999_999_999] even for negative total_ns
 
-    var days = total_seconds // 86400
-    var sod = total_seconds - days * 86400
+        var days = total_seconds // 86400
+        var sod = total_seconds - days * 86400
 
-    var hour = sod // 3600
-    var minute = (sod % 3600) // 60
-    var second = sod % 60
+        var hour = sod // 3600
+        var minute = (sod % 3600) // 60
+        var second = sod % 60
 
-    var (year, month, day) = __civil_from_days(days)
+        var (year, month, day) = Self.__civil_from_days(days)
 
-    return UTCDateTime(year, month, day, hour, minute, second, nanosecond)
+        return UTCDateTime(year, month, day, hour, minute, second, nanosecond)
+
+    
+    def format(self) -> String:
+        """
+        Format a timestamp into a human-readable string using the specified format.
+        Args:
+            timestamp (Timestamp): The timestamp to format.
+        Returns:
+            String: The formatted timestamp as a string.
+        """
+        var dt = UTCDateTime.from_timestamp(self)
+        return dt.format("")

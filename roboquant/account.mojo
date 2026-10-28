@@ -1,5 +1,5 @@
 from .money import Currency, Wallet, Amount
-from .time import Timestamp, UTC, timestamp_format
+from .time import Timestamp
 from .asset import Asset
 from .order import Order, Size
 from std.os import abort
@@ -136,7 +136,7 @@ struct Account(Writable, Copyable):
         return result^
 
     def write_to(self, mut writer: Some[Writer]):
-        writer.write("last update : ", timestamp_format(self.last_update))
+        writer.write("last update : ", self.last_update.format())
         writer.write("\ncash        : ", self.cash)
         writer.write("\nbuying power: ", self.buying_power)
         writer.write("\nequity      : ", self.equity())

@@ -1,5 +1,5 @@
 from .asset import Asset
-from .time import Timestamp, Timeframe, TimeSeries, from_iso
+from .time import Timestamp, Timeframe, TimeSeries
 from .order import Size
 
 from std.utils import Variant
@@ -155,8 +155,8 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
 
     var step_ns = Int(step_seconds * 1_000_000_000.0)
     var assets = {Asset.Stock(symbol) for symbol in symbols}
-    var time = from_iso(start)
-    var stop = from_iso(end)
+    var time = Timestamp.from_iso(start)
+    var stop = Timestamp.from_iso(end)
     if stop <= time:
         raise Error("end has to be after start")
 

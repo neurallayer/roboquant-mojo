@@ -4,7 +4,7 @@ from .account import Account, Position, Trade
 from .money import Wallet, Amount, Currency
 from .asset import Asset
 from .feed import Event
-from .time import Timestamp, same_day, UTC, TimeZone
+from .time import Timestamp
 from std.logger import Logger
 
 comptime logger = Logger()
@@ -30,15 +30,15 @@ struct SimBroker(Broker):
     var cash: Wallet
     var base_currency: Currency
     var order_id: Int
-    var tz: TimeZone
+    var tz_offset_seconds: Int
 
-    def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), timezone: TimeZone = UTC):
+    def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), tz_offset_seconds: Int = 0):
         self.orders = {}
         self.positions = {}
         self.cash = Wallet(deposit)
         self.base_currency = deposit.currency
         self.order_id = 0
-        self.tz = timezone
+        self.tz_offset_seconds = tz_offset_seconds
 
     def place_orders(mut self, orders: List[Order]) -> None:
         for var order in orders:
@@ -68,7 +68,7 @@ struct SimBroker(Broker):
         if order.tif == TIF.GTC:
             return False
         elif order.tif == TIF.DAY:
-            return not same_day(order.time.value(), time, self.tz)
+            return not time.same_day(order.time.value())
         
         logger.error("Unknown TIF:", order.tif)
         return False

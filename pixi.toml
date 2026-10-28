@@ -7,7 +7,7 @@ version = "0.1.0"
 [tasks]
 build = "pixi run mojo precompile -I lib roboquant/ -o lib/roboquant.mojoc"
 charts = { cmd = "pixi run mojo -I lib tests/test_chart.mojo", depends-on = ["build"]}
-backtest = { cmd = "pixi run mojo -debug-level=line-tables -I lib tests/test_run.mojo", depends-on = ["build"]}
+backtest = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["build"]}
 
 test = { cmd = "pixi run mojo -I lib -D ASSERT=all tests/test_money.mojo", depends-on = ["build"]}
 test_evt = { cmd = "pixi run mojo -I lib -D ASSERT=all tests/test_event.mojo", depends-on = ["build"]}

@@ -1,6 +1,6 @@
 from std.testing import assert_equal, assert_true, assert_not_equal, assert_almost_equal, TestSuite
 from roboquant.money import Amount, Wallet, USD, EUR, Currency
-from roboquant.time import Timestamp, now
+from roboquant.time import Timestamp
 
 
 def test_currency() raises:
@@ -38,7 +38,7 @@ def test_wallet() raises:
 
 
 def test_conversion() raises:
-    var t = now()
+    var t = Timestamp.now()
     var amt1 = 100@USD
     var amt2 = amt1.convert_to("USD", t)
     assert_equal(amt1, amt2)

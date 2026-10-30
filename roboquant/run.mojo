@@ -1,4 +1,4 @@
-from .feed import PriceItem, HistoricFeed
+from .feed import HistoricFeed
 from .broker import Broker
 from .trader import Trader
 from .time import Timeframe, TIME_MIN
@@ -27,5 +27,5 @@ def run(
             broker.place_orders(orders)
             journal.track(account, evt, signals, orders)
         else:
-            if evt.time >= timeframe.value().end:
+            if evt.time > timeframe.value():
                 break

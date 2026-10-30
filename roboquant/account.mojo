@@ -5,6 +5,13 @@ from .order import Order, Size
 from std.os import abort
 
 
+def sum[T:Deinitable, //, f: def(T) thin -> Amount](list: List[T]) -> Wallet:
+    var result = Wallet()
+    for elem in list:
+        result.deposit(f(elem))
+    return result^
+
+
 @fieldwise_init
 struct Trade(Copyable, Writable):
     """Represents a single executed trade with an asset, size, price, and realized PnL value.
@@ -107,12 +114,12 @@ struct Account(Writable, Copyable):
     def get_position_size(self, asset: Asset) -> Size:
         try:
             var position_sizes = [p.size for ref p in self.positions if p.asset == asset]
-            var sum = Size()
+            var total = Size()
             for size in position_sizes:
-                sum += size
-            return sum
+                total += size
+            return total
         except:
-            abort()
+            abort("Couldn't calculate position size")
 
     def unrealized_pnl(self) -> Wallet:
         """The unrealized Profit & Loss by open positions."""
@@ -123,10 +130,7 @@ struct Account(Writable, Copyable):
 
     def realized_pnl(self) -> Wallet:
         """The realized Profit & Loss made by executed trades."""
-        var result = Wallet()
-        for t in self.trades:
-            result.deposit(t.pnl())
-        return result^
+        return sum[lambda (t: Trade) -> Amount : t.pnl()](self.trades)
 
     def equity(self) -> Wallet:
         """The total equity of the account, which is the sum of cash and

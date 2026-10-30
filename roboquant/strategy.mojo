@@ -1,5 +1,5 @@
 from .asset import Asset
-from .feed import Event, Bar
+from .feed import Event, Candle
 from .time import Timestamp
 
 
@@ -65,13 +65,13 @@ trait PricingStrategy(Strategy):
 
   
     def create_signals(mut self, event: Event) -> List[Signal]:
-        var signals: List[Signal]  = []
+        var signals: List[Signal] = []
         for ref asset in event.items.keys():   
-            var price = event.get_price(asset)
-            var rating = self.create_rating(asset, price.value())
-            if rating:
-                var signal = Signal(asset, rating)
-                signals.append(signal)
+            if case .Some(price) = event.get_price(asset):
+                var rating = self.create_rating(asset, price)
+                if rating:
+                    var signal = Signal(asset, rating)
+                    signals.append(signal)
 
         return signals^
 
@@ -89,16 +89,16 @@ trait CandleStrategy(Strategy):
         var signals: List[Signal]  = []
         for item in event.items.items():  
             ref price = item.value.item
-            if price.isa[Bar]():
+            if price.isa[Candle]():
                 ref asset = item.key
-                var rating = self.create_rating(asset, price[Bar])
+                var rating = self.create_rating(asset, price[Candle])
                 if rating:
                     var signal = Signal(asset, rating)
                     signals.append(signal)
                 
         return signals^
 
-    def create_rating(mut self, asset: Asset, bar: Bar) -> Float64:
+    def create_rating(mut self, asset: Asset, candle: Candle) -> Float64:
         """Create rating for the given asset and bars. The rating is a Float64 value where
         a positive value indicates a buy signal, a negative value indicates a sell signal, and zero
         indicates no signal. The rating can be used to determine the strength of the signal, but 
@@ -113,19 +113,25 @@ struct EMACrossOver(PricingStrategy):
 
     var history: Dict[Asset, Tuple[Int, Float64, Float64]]
     var min_n: Int
+    var fast: Float64
+    var slow: Float64
 
-    def __init__(out self, min_n: Int = 10):
+    def __init__(out self, fast_period: Int = 13, slow_period: Int = 26, smoothing: Float64 = 2.0, min_n: Optional[Int] = None):
         self.history = {}
-        self.min_n = min_n
+        self.fast = 1.0 - (smoothing / Float64(fast_period + 1))
+        self.slow = 1.0 - (smoothing / Float64(slow_period + 1))
+        self.min_n = slow_period if not min_n else min_n.value()
 
     def create_rating(mut self, asset: Asset, price: Float64) -> Float64:
     
         var (n, old_ema_fast, old_ema_slow) = self.history.get(asset, (0, price, price))
         n += 1
 
+        var f, s = self.fast, self.slow
+
         # Calculate new EMA values
-        var new_ema_fast = 0.9 * old_ema_fast + 0.1 * price
-        var new_ema_slow = 0.95 * old_ema_slow + 0.05 * price
+        var new_ema_fast = f * old_ema_fast + (1.0 - f) * price
+        var new_ema_slow = s * old_ema_slow + (1.0 - s) * price
 
         self.history[asset] = (n, new_ema_fast, new_ema_slow)
    

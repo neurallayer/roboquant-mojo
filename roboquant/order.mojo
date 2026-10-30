@@ -81,18 +81,22 @@ struct Order(ImplicitlyCopyable, Writable):
         self.time = time
 
     @staticmethod
-    def new_mkt(asset: Asset, size: Size, tif: TIF = TIF.DAY) -> Order:
+    def new_mkt(asset: Asset, size: Size, tif: TIF = TIF.GTC) -> Order:
         """Create a new Market Order."""
         return Order(asset, size, None, tif)
 
     @staticmethod
-    def new_limit(asset: Asset, size: Size, limit: Float64, tif: TIF = TIF.DAY) -> Order:
+    def new_limit(asset: Asset, size: Size, limit: Float64, tif: TIF = TIF.GTC) -> Order:
         """Create a new Limit Order."""
         return Order(asset, size, limit, tif)
 
     def value(self, price: Float64) -> Amount:
-        """Return the total order value given the provided price."""
-        return self.asset.value(self.size, price)
+        """Return the total order value given the provided price. If the order has a limit set,
+        that will be used instead of the price."""
+        if self.limit:
+            return self.asset.value(self.size, self.limit.value())
+        else:
+            return self.asset.value(self.size, price)
 
     def remaining(self) -> Size:
         """Return the remaining size of the order that has not been filled yet."""

@@ -37,23 +37,11 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
         """
         return Amount(self, other)
 
-struct ExchangeRate(ImplicitlyCopyable):
-
+@fieldwise_init
+struct ExchangeRate(ImplicitlyCopyable, TrivialRegisterPassable):
     var time: Timestamp
     var rate: Float64
 
-
-
-def bisect_left[T: Comparable & Movable](arr: List[T], x: T) -> Int:
-    var lo = 0
-    var hi = len(arr)
-    while lo < hi:
-        var mid = lo + (hi - lo) // 2
-        if arr[mid] < x:
-            lo = mid + 1
-        else:
-            hi = mid
-    return lo
 
 @fieldwise_init
 struct Converter(ImplicitlyCopyable):
@@ -63,23 +51,36 @@ struct Converter(ImplicitlyCopyable):
     and provides methods to convert amounts at specific timestamps.
     """
 
-    var _rates: Dict[Currency, Tuple[List[Timestamp], List[Float64]]]
+    var _rates: Dict[Currency, List[ExchangeRate]]
 
     def __init__(out self):
         self._rates = {}
-        self._rates[Currency.USD] = ([TIME_MIN], [1.1])
-        self._rates[Currency.EUR] = ([TIME_MIN], [1.0])
-        self._rates[Currency.GBP] = ([TIME_MIN], [0.9])
+        self._rates[Currency.USD] = [ExchangeRate(TIME_MIN, 1.1)]
+        self._rates[Currency.EUR] = [ExchangeRate(TIME_MIN, 1.0)]
+        self._rates[Currency.GBP] = [ExchangeRate(TIME_MIN, 0.9)]
+
+
+    @staticmethod
+    def bisect_left(arr: List[ExchangeRate], x: Timestamp) -> Int:
+        var lo = 0
+        var hi = len(arr)
+        while lo < hi:
+            var mid = lo + (hi - lo) // 2
+            if arr[mid].time < x:
+                lo = mid + 1
+            else:
+                hi = mid
+        return lo
 
 
     def __init__(out self, *, copy: Self):
         self._rates = copy._rates.copy()
 
     def _get_rate(self, currency: Currency, time: Timestamp) raises -> Float64:
-        ref timeline, rates = self._rates[currency]
-        var idx = bisect_left(timeline, time) # type: ignore
+        ref rates = self._rates[currency]
+        var idx = Self.bisect_left(rates, time) # type: ignore
         idx = min(idx, len(rates) - 1)
-        return rates[idx]
+        return rates[idx].rate
 
     def convert(self, amount: Amount, to_currency: Currency, time: Timestamp) -> Amount:
         """Convert the monetary amount into another currency at the provided time.
@@ -221,7 +222,7 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
         return len(self.values)
 
     def convert_to(self, currency: Currency, time: Timestamp) -> Amount:
-        var sum = 0.0
+        var total = 0.0
         for amount in self.amounts():
-            sum += amount.convert_to(currency, time).value
-        return Amount(currency, sum)
+            total += amount.convert_to(currency, time).value
+        return Amount(currency, total)

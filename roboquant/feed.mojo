@@ -9,7 +9,7 @@ from std.collections import Set
 
 
 @fieldwise_init
-struct Bar(Copyable):
+struct Candle(Copyable):
     var open: Float64
     var high: Float64
     var low: Float64
@@ -44,17 +44,16 @@ struct OrderBook(Copyable):
     var bid: List[OrderBookEntry]
 
 
-comptime PriceItem = Variant[Bar, Quote, TradePrice]
-
+comptime PriceItem = Variant[Candle, Quote, TradePrice]
 
 @fieldwise_init
 struct Price(Copyable):
     
-    var item: Variant[Bar, Quote, TradePrice]
+    var item: PriceItem
 
     def get_price(self) -> Float64:
-        if self.item.isa[Bar]():
-            ref c = self.item[Bar]
+        if self.item.isa[Candle]():
+            ref c = self.item[Candle]
             return c.close
         elif self.item.isa[Quote]():
             ref q = self.item[Quote]
@@ -74,18 +73,6 @@ struct Event(Sized, Copyable):
 
     def __len__(self) -> Int:
         return len(self.items)
-
-    @staticmethod
-    def __get_price(item: PriceItem) -> Float64:
-        if item.isa[Bar]():
-            ref c = item[Bar]
-            return c.close
-        elif item.isa[Quote]():
-            ref q = item[Quote]
-            return (q.ask_price + q.bid_price)/2
-        else:
-            ref t = item[TradePrice]
-            return t.price
 
     def get_price(self, asset: Asset) -> Optional[Float64]:
         try: 
@@ -140,7 +127,7 @@ struct HistoricFeed:
             if price:
                 tl.append(evt.time)
                 prices.append(price.value())
-        return TimeSeries.univariate(asset.symbol(), tl^, prices^)
+        return TimeSeries.univariate(asset.symbol().value, tl^, prices^)
 
 
 
@@ -170,7 +157,7 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
         var items = Dict[Asset, Price](capacity=n_assets)
         for asset in assets:
             var price = prices[asset]
-            var bar = Bar(price, price*1.01, price*0.99, price, 10_000)
+            var bar = Candle(price, price*1.01, price*0.99, price, 10_000)
             var _ = items.insert(asset, Price(bar^))
             prices[asset] = price * randn_float64(mean=1.0, standard_deviation=0.001)
         var evt = Event(time, items^)

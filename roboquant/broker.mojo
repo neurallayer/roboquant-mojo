@@ -56,27 +56,26 @@ struct SimBroker(Broker):
                     logger.warning("ignored order", order)
 
     def __update_positions(mut self, event: Event) -> None:
-        try:
-            for asset in self.positions:
-                if case .Some(price) = event.get_price(asset):
-                    self.positions[asset].mkt_price = price
-        except e:
-            logger.error("unexpected error:", e)
-
+        for ref pos in self.positions.values():
+            if case .Some(price) = event.get_price(pos.asset):
+                pos.mkt_price = price
+      
 
     def __has_expired(self, order: Order, time: Timestamp) -> Bool:
-        if order.tif == TIF.GTC:
-            return False
-        elif order.tif == TIF.DAY:
-            return not time.same_day(order.time.value())
-        
-        logger.error("Unknown TIF:", order.tif)
-        return False
+        match order.tif:
+            case TIF.GTC:
+                return False
+            case TIF.DAY:
+                return not time.same_day(order.time.value())
+            case _:
+                logger.error("Unknown TIF:", order.tif)
+                return False
 
     def __remove_order(mut self, order: Order):
         try:
             var _ = self.orders.pop(order.id.value())
         except:
+            logger.error("Order doesn't exist:", order)
             pass
 
     def __close_position(mut self, pos: Position):

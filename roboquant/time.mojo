@@ -108,6 +108,19 @@ struct TimeSeries(Copyable, Writable):
         """
         var values_dict: Dict[String, List[Float64]] = {name: data^}
         return Self(timeline^, values_dict^)  
+
+    @staticmethod
+    def univariate(name: String, data: List[Tuple[Timestamp, Float64]]) -> Self:
+        """
+        Create a univariate TimeSeries, so only a single variable.
+        Args:
+            name (String): The name of the variable.
+            data (List[Float64]): A list of Tuple[Timestamp, Float64] values corresponding to each timestamp in the series.
+        Returns:
+            TimeSeries: A univariate TimeSeries instance.
+        """
+        var values_dict: Dict[String, List[Float64]] = {name: [v for (_, v) in data]}
+        return Self([t for (t, _) in data], values_dict^)  
   
 
     def plot(self, *metrics: String) raises -> None:
@@ -164,10 +177,6 @@ struct UTCDateTime(Copyable, Movable, Writable):
     def from_timestamp(t: Timestamp) -> Self:
         return t.to_datetime()
 
-    def format(self, format: String) -> String:
-        return String(self.year) + String(self.month) + String(self.day)
-
-
     def timestamp(self) -> Timestamp:
         """Convert this UTC datetime to a Unix timestamp in nanoseconds."""
         var y = self.year - (1 if self.month <= 2 else 0)
@@ -208,11 +217,20 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def __lt__(self, other: Timestamp) -> Bool:
         return self.time < other.time
 
+    def __lt__(self, other: Timeframe) -> Bool:
+        return self < other.start
+
     def __le__(self, other: Timestamp) -> Bool:
         return self.time <= other.time
 
     def __gt__(self, other: Timestamp) -> Bool:
         return self.time > other.time
+
+    def __gt__(self, other: Timeframe) -> Bool:
+        if other.inclusive:
+            return self > other.end
+        else:
+            return self >= other.end
 
     def __ge__(self, other: Timestamp) -> Bool:
         return self.time >= other.time
@@ -226,10 +244,10 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def __iadd__(mut self, other_ns: Int):
         self.time += other_ns
 
-    def same_day(self,other: Timestamp, offset:Int = 0) -> Bool:
+    def same_day(self,other: Timestamp, offset_seconds:Int = 0) -> Bool:
         """Check if two timestamps are on the same day given a timezone."""
-        var dt1 = self + offset * 1_000_000_000
-        var dt2 = other + offset * 1_000_000_000
+        var dt1 = self + offset_seconds * 1_000_000_000
+        var dt2 = other + offset_seconds * 1_000_000_000
         return dt1.to_datetime().same_day(dt2.to_datetime())
 
     @implicit
@@ -303,4 +321,4 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
             String: The formatted timestamp as a string.
         """
         var dt = UTCDateTime.from_timestamp(self)
-        return dt.format("")
+        return "{}".format(dt)

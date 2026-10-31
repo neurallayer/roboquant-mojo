@@ -1,6 +1,4 @@
 from std.testing import assert_equal, assert_true, assert_not_equal, assert_almost_equal, TestSuite
-from roboquant.asset import Asset
-from roboquant.feed import Event, Bar, Quote, Price
 from roboquant.time import Timestamp
 
 

@@ -13,7 +13,6 @@ from std.python import Python, PythonObject
 
 def main() raises:
     var feed = random_walk(start="2025-01-01",end="2026-01-01", step_seconds = 3600.0 * 24.0, n_assets=8)
-    # var assets = List(feed.assets())
 
     var plt = Python.import_module("matplotlib.pyplot")
     var fig_axs = plt.subplots(4, 2, figsize=[12,8])
@@ -24,7 +23,7 @@ def main() raises:
     for idx, asset in enumerate(feed.assets()):
         var ax = axs[idx]
         var ts1 = feed.to_timeseries(asset)
-        ts1.plot(asset.symbol(), ax)
+        ts1.plot(asset.symbol().value, ax)
         ax.legend()
     fig.tight_layout()
     plt.show()

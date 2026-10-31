@@ -19,10 +19,20 @@ struct Candle(Copyable):
     def to_array(self) -> Array[Float64, 5]:
         return [self.open, self.high, self.low, self.close, self.volume]
 
+    def get_price(self, type: String = "DEFAULT") -> Float64:
+        match type:
+            case "OPEN": return self.open
+            case "HIGH": return self.high
+            case "LOW": return self.low
+            case _: return self.close
+
 @fieldwise_init
 struct TradePrice(Copyable):
     var price: Float64
     var volume: Float64
+
+    def get_price(self, type: String = "DEFAULT") -> Float64:
+        return self.price
 
 
 @fieldwise_init
@@ -32,6 +42,11 @@ struct Quote(Copyable):
     var bid_price: Float64
     var bid_volume: Float64
 
+    def get_price(self, type: String = "DEFAULT") -> Float64:
+        match type:
+            case "ASK": return self.ask_price
+            case "BID": return self.bid_price
+            case _: return (self.ask_price + self.bid_price) / 2
 
 struct OrderBookEntry(Copyable):
     var price: Float64
@@ -51,17 +66,14 @@ struct Price(Copyable):
     
     var item: PriceItem
 
-    def get_price(self) -> Float64:
+    def get_price(self, type: String = "DEFAULT") -> Float64:
         if self.item.isa[Candle]():
-            ref c = self.item[Candle]
-            return c.close
+            return self.item[Candle].get_price(type)
         elif self.item.isa[Quote]():
-            ref q = self.item[Quote]
-            return (q.ask_price + q.bid_price)/2
+            return self.item[Quote].get_price(type)
         else:
-            ref t = self.item[TradePrice]
-            return t.price   
-
+            return self.item[TradePrice].get_price(type)
+      
     def isa[T:AnyType](self) -> Bool:
         return self.item.isa[T]()
 
@@ -73,6 +85,13 @@ struct Event(Sized, Copyable):
 
     def __len__(self) -> Int:
         return len(self.items)
+
+    def get_price(self, asset: Asset, type: String) -> Optional[Float64]:
+        try: 
+            ref item = self.items[asset]
+            return item.get_price(type)
+        except:
+            return None
 
     def get_price(self, asset: Asset) -> Optional[Float64]:
         try: 

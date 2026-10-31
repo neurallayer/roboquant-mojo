@@ -2,7 +2,7 @@
 channels = ["https://conda.modular.com/max", "https://repo.prefix.dev/modular-community", "conda-forge"]
 name = "roboquant"
 platforms = ["osx-arm64"]
-version = "0.1.0"
+version = "0.2.0"
 
 [tasks]
 build = "pixi run mojo precompile -I lib roboquant/ -o lib/roboquant.mojoc"

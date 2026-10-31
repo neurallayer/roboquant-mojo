@@ -65,7 +65,7 @@ struct FlexTrader(Trader):
                 size = self.get_order_size(signal, price.value(), event.time, "1")
 
             if not size.is_zero():
-                var order = Order.new_mkt(signal.asset, size)
+                var order = Order.market_order(signal.asset, size)
                 orders.append(order)
 
         return orders^

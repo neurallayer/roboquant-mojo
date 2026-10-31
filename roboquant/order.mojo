@@ -81,12 +81,12 @@ struct Order(ImplicitlyCopyable, Writable):
         self.time = time
 
     @staticmethod
-    def new_mkt(asset: Asset, size: Size, tif: TIF = TIF.GTC) -> Order:
+    def market_order(asset: Asset, size: Size, tif: TIF = TIF.GTC) -> Order:
         """Create a new Market Order."""
         return Order(asset, size, None, tif)
 
     @staticmethod
-    def new_limit(asset: Asset, size: Size, limit: Float64, tif: TIF = TIF.GTC) -> Order:
+    def limit_order(asset: Asset, size: Size, limit: Float64, tif: TIF = TIF.GTC) -> Order:
         """Create a new Limit Order."""
         return Order(asset, size, limit, tif)
 
@@ -137,13 +137,12 @@ struct Order(ImplicitlyCopyable, Writable):
     def modify(self, size: Optional[Size], limit: Optional[Float64]) -> Order:
         """Create a modify order. You can modify the size and/or limit of an existing order.
         If a parameter is not provided, the existing value will be retained.
+
         Args:
-            size (Optional[Size]): The new size for the order. If None, the existing size will be retained.
-            limit (Optional[Float64]): The new limit price for the order. If None, the existing limit will be retained.
+            size: The new size for the order. If None, the existing size will be retained.
+            limit: The new limit price for the order. If None, the existing limit will be retained.
         Returns:
             Order: A new Order instance with the modified size and/or limit.
-        Raises:
-            AssertionError: If the order does not have an ID, indicating that it has not been placed yet and cannot be modified.
         """
         assert self.id is not None, "Id required"
         var result = self.copy()
@@ -156,6 +155,7 @@ struct Order(ImplicitlyCopyable, Writable):
 
     def is_executable(self, price: Float64) -> Bool:
         """Will this order execute given the provided price.
+
         Args:
             price: The current market price to check against the order's limit.
         Returns:

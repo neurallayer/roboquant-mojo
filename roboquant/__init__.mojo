@@ -4,4 +4,4 @@ It provides a simple and flexible interface for backtesting, paper trading, and 
 The framework includes a variety of built-in strategies, as well as tools for creating custom strategies.
 """
 
-comptime ROBOQUANT_VERSION = "0.1.0"
+comptime ROBOQUANT_VERSION = "0.2.0"

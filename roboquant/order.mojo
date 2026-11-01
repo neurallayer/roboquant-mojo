@@ -34,7 +34,7 @@ struct TIF(ImplicitlyCopyable, Writable, Equatable):
         else:
             writer.write("Unknown TIF")
 
-struct Order(ImplicitlyCopyable, Writable):
+struct Order(Copyable, Writable):
     """
     An Order represents a request to buy or sell a specific asset in the market.
 
@@ -60,26 +60,12 @@ struct Order(ImplicitlyCopyable, Writable):
     var tif: TIF
     """Time In Force, DAY or GTC."""
 
-    var id: Optional[String]
-    """An optional identifier for the order.
-    This should only be set by the Broker after it has been placed."""
-
-    var fill: Size
-    """The amount of the order that has been filled. This is used to track the progress of the order execution.
-    This should only be set by the Broker."""
-
-    var time: Optional[Timestamp]
-    """The time when the order was placed. This should only be set by the Broker."""
-
     def __init__(out self, asset: Asset, size: Size, limit: Optional[Float64], tif: TIF = TIF.DAY, id: Optional[String] = None, fill: Size = Size.zero(), time: Optional[Timestamp] = None):
         self.asset = asset
         self.size = size
         self.limit = limit
         self.tif = tif
-        self.id = id
-        self.fill = fill
-        self.time = time
-
+    
     @staticmethod
     def market_order(asset: Asset, size: Size, tif: TIF = TIF.GTC) -> Order:
         """Create a new Market Order."""
@@ -98,27 +84,6 @@ struct Order(ImplicitlyCopyable, Writable):
         else:
             return self.asset.value(self.size, price)
 
-    def remaining(self) -> Size:
-        """Return the remaining size of the order that has not been filled yet."""
-        try:
-            return self.size - self.fill
-        except:
-            abort("Error calculating remaining size of the order.")
-
-    def remaining_value(self, price: Float64) -> Amount:
-        """Return the remaining value of the order that has not been filled yet."""
-        if self.limit:
-            return self.asset.value(self.remaining(), self.limit.value())
-        else:
-            return self.asset.value(self.remaining(), price)
-
-    def cancel(self) -> Order:
-        """Create a cancellation order."""
-        assert self.id is not None, "Id required"
-        var result = self.copy()
-        result.size = Size()
-        return result^
-
     def is_buy(self) -> Bool:
         """
         True if this is a BUY order, False otherwise.
@@ -134,24 +99,6 @@ struct Order(ImplicitlyCopyable, Writable):
     def is_cancelled(self) -> Bool:
         return self.size.is_zero()
 
-    def modify(self, size: Optional[Size], limit: Optional[Float64]) -> Order:
-        """Create a modify order. You can modify the size and/or limit of an existing order.
-        If a parameter is not provided, the existing value will be retained.
-
-        Args:
-            size: The new size for the order. If None, the existing size will be retained.
-            limit: The new limit price for the order. If None, the existing limit will be retained.
-        Returns:
-            Order: A new Order instance with the modified size and/or limit.
-        """
-        assert self.id is not None, "Id required"
-        var result = self.copy()
-        if size:
-            result.size = size.value()
-        if limit:
-            result.limit = limit.value()    
-        
-        return result^
 
     def is_executable(self, price: Float64) -> Bool:
         """Will this order execute given the provided price.
@@ -166,3 +113,59 @@ struct Order(ImplicitlyCopyable, Writable):
         
         var limit = self.limit.value()
         return price <= limit if self.is_buy() else price >= limit
+
+
+
+
+struct OrderTicket(Equatable & Hashable & Copyable):
+    var id: String
+    var fill: Int
+    var time: Optional[Timestamp]
+    var order: Order
+
+    def __init__(out self, id: String, var order: Order):
+        self.id = id
+        self.fill = 0
+        self.time = None
+        self.order = order^
+
+    
+    def remaining(self) -> Size:
+        """Return the remaining size of the order that has not been filled yet."""
+        try:
+            return self.order.size - self.fill
+        except:
+            abort("Error calculating remaining size of the order.")
+
+    def remaining_value(self, price: Float64) -> Amount:
+        """Return the remaining value of the order that has not been filled yet."""
+        if self.order.limit:
+            return self.order.asset.value(self.remaining(), self.order.limit.value())
+        else:
+            return self.order.asset.value(self.remaining(), price)
+
+    def cancel(self) -> Order:
+        """Create a cancellation order."""
+        var result = self.order.copy()
+        result.size = Size()
+        return result^
+
+    def modify(self, size: Optional[Size], limit: Optional[Float64]) -> Order:
+        """Create a modify order. You can modify the size and/or limit of an existing order.
+        If a parameter is not provided, the existing value will be retained.
+
+        Args:
+            size: The new size for the order. If None, the existing size will be retained.
+            limit: The new limit price for the order. If None, the existing limit will be retained.
+        Returns:
+            Order: A new Order instance with the modified size and/or limit.
+        """
+        var result = self.order.copy()
+        if size:
+            result.size = size.value()
+        if limit:
+            result.limit = limit.value()    
+        
+        return result^
+
+

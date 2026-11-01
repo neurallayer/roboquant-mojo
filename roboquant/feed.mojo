@@ -59,12 +59,10 @@ struct OrderBook(Copyable):
     var bid: List[OrderBookEntry]
 
 
-comptime PriceItem = Variant[Candle, Quote, TradePrice]
-
 @fieldwise_init
-struct Price(Copyable):
+struct PriceItem(Copyable):
     
-    var item: PriceItem
+    var item: Variant[Candle, Quote, TradePrice]
 
     def get_price(self, type: String = "DEFAULT") -> Float64:
         if self.item.isa[Candle]():
@@ -81,7 +79,7 @@ struct Price(Copyable):
 @fieldwise_init
 struct Event(Sized, Copyable):
     var time: Timestamp
-    var items: Dict[Asset, Price]
+    var items: Dict[Asset, PriceItem]
 
     def __len__(self) -> Int:
         return len(self.items)
@@ -173,11 +171,11 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
     var prices = {asset:random_float64(50.0, 200.0) for asset in assets}
 
     while True:
-        var items = Dict[Asset, Price](capacity=n_assets)
+        var items = Dict[Asset, PriceItem](capacity=n_assets)
         for asset in assets:
             var price = prices[asset]
             var bar = Candle(price, price*1.01, price*0.99, price, 10_000)
-            var _ = items.insert(asset, Price(bar^))
+            var _ = items.insert(asset, PriceItem(bar^))
             prices[asset] = price * randn_float64(mean=1.0, standard_deviation=0.001)
         var evt = Event(time, items^)
         events.append(evt^)

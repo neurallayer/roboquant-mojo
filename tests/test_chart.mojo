@@ -23,7 +23,7 @@ def main() raises:
     for idx, asset in enumerate(feed.assets()):
         var ax = axs[idx]
         var ts1 = feed.to_timeseries(asset)
-        ts1.plot(asset.symbol().value, ax)
+        ts1.plot(ax)
         ax.legend()
     fig.tight_layout()
     plt.show()

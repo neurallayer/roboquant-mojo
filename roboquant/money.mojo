@@ -49,6 +49,8 @@ struct Converter(ImplicitlyCopyable):
     A Converter is responsible for converting monetary amounts between different currencies
     based on historical exchange rates. It maintains a dictionary of exchange rates for different currencies
     and provides methods to convert amounts at specific timestamps.
+
+    It assumes all the rates are to a single currency. 
     """
 
     var _rates: Dict[Currency, List[ExchangeRate]]
@@ -82,17 +84,13 @@ struct Converter(ImplicitlyCopyable):
         idx = min(idx, len(rates) - 1)
         return rates[idx].rate
 
-    def convert(self, amount: Amount, to_currency: Currency, time: Timestamp) -> Amount:
+    def convert(self, amount: Amount, to_currency: Currency, time: Timestamp) raises -> Amount:
         """Convert the monetary amount into another currency at the provided time.
         """
-        try:
-            var value = amount.value * self._get_rate(to_currency, time) / self._get_rate(amount.currency, time)
-            return Amount(to_currency, value)
-        except e:
-            abort(String(e))
+        var value = amount.value * self._get_rate(to_currency, time) / self._get_rate(amount.currency, time)
+        return Amount(to_currency, value)
     
 comptime _CONVERTER = Converter()
-
 
 @fieldwise_init
 struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
@@ -119,7 +117,7 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
     def write_to(self, mut writer: Some[Writer]):
         writer.write(self.value, "@", self.currency)
 
-    def convert_to(self, currency: Currency, time: Timestamp) -> Self:
+    def convert_to(self, currency: Currency, time: Timestamp) raises -> Self:
         if self.currency == currency:
             return self.copy()
         if self.value == 0:
@@ -194,23 +192,12 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
         for item in self.amounts():
             writer.write(item, " ") 
 
-    def get(self, currency: Currency) -> Optional[Float64]:
-        return self.values.get(currency)
+    def get(self, currency: Currency) -> Amount:
+        var value = self.values.get(currency, 0.0)
+        return Amount(currency, value) 
 
-    def get(self, currency_code: String) -> Optional[Float64]:
-        return self.get(Currency(currency_code))
-
-    def get(self, currency: Currency, default: Float64) -> Float64:
-        return self.values.get(currency, default)
-
-    def get(self, currency_code: String, default: Float64) -> Float64:
-        return self.get(Currency(currency_code), default)
-
-    def __getitem__(self, currency_code: String) raises -> Float64:
-        return self.values[Currency(currency_code)]
-
-    def __getitem__(self, currency: Currency) raises -> Float64:
-        return self.values[currency]
+    def __getitem__(self, currency: Currency) -> Amount:
+        return self.get(currency) 
 
     def __iadd__(mut self, amt: Amount):
         self.deposit(amt)
@@ -221,7 +208,14 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
     def __len__(self) -> Int:
         return len(self.values)
 
-    def convert_to(self, currency: Currency, time: Timestamp) -> Amount:
+    def convert_to(self, currency: Currency, time: Timestamp) raises -> Amount:
+        if len(self) == 0:
+            return Amount(currency, 0.0)
+
+        # Optimized path for single currency 
+        if len(self) == 1 and currency in self.values:
+            return Amount(currency, self.values[currency])
+
         var total = 0.0
         for amount in self.amounts():
             total += amount.convert_to(currency, time).value

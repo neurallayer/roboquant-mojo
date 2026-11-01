@@ -151,6 +151,19 @@ struct TimeSeries(Copyable, Writable):
             logger.warning("Metric not found in TimeSeries:", metric)
             return  
         
+    def plot(self, ax: PythonObject) raises -> None:
+        """
+        Plot the TimeSeries data using a plotting library.
+        This method visualizes the time series data for analysis and interpretation.
+        """
+        var floats = [ts.to_unix_timestamp() for ts in self.timeline]
+        var times_np = copy_to_numpy_array(floats).astype('datetime64[s]')
+        for item in self.data.items():
+            ref metric = item.key
+            ref values = item.value 
+            var values_np = copy_to_numpy_array(values)
+            ax.plot(times_np, values_np, label=metric)
+    
     
 def _pad_zero[I: Intable](value: I, width: Int) -> String:
     """Format `value` with leading zeros up to `width` characters."""
@@ -168,7 +181,7 @@ struct UTCDateTime(Copyable, Movable, Writable):
 
     @staticmethod
     def now() -> Self:
-        return Self.from_timestamp(time._realtime_nanoseconds())
+        return Self.from_timestamp(Timestamp(time._realtime_nanoseconds()))
 
     def same_day(self, other: UTCDateTime, offset: Int = 0) -> Bool:
         return self.year == other.year and self.month == other.month and self.day == other.day
@@ -189,7 +202,7 @@ struct UTCDateTime(Copyable, Movable, Writable):
         var days = era * 146097 + doe - 719468
 
         var seconds = days * 86400 + self.hour * 3600 + self.minute * 60 + self.second
-        return seconds * 1_000_000_000 + self.nanosecond
+        return Timestamp(seconds * 1_000_000_000 + self.nanosecond)
 
 
     def write_to(self, mut writer: Some[Writer]):
@@ -212,47 +225,10 @@ struct UTCDateTime(Copyable, Movable, Writable):
 
 struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equatable, Writable, Hashable):
 
-    var time: Int
+    var nanoseconds: Int
 
-    def __lt__(self, other: Timestamp) -> Bool:
-        return self.time < other.time
-
-    def __lt__(self, other: Timeframe) -> Bool:
-        return self < other.start
-
-    def __le__(self, other: Timestamp) -> Bool:
-        return self.time <= other.time
-
-    def __gt__(self, other: Timestamp) -> Bool:
-        return self.time > other.time
-
-    def __gt__(self, other: Timeframe) -> Bool:
-        if other.inclusive:
-            return self > other.end
-        else:
-            return self >= other.end
-
-    def __ge__(self, other: Timestamp) -> Bool:
-        return self.time >= other.time
-
-    def __sub__(self, other: Timestamp) -> Int:
-        return self.time - other.time
-
-    def __add__(self, other_ns: Int) -> Timestamp:
-        return Timestamp(self.time + other_ns)
-
-    def __iadd__(mut self, other_ns: Int):
-        self.time += other_ns
-
-    def same_day(self,other: Timestamp, offset_seconds:Int = 0) -> Bool:
-        """Check if two timestamps are on the same day given a timezone."""
-        var dt1 = self + offset_seconds * 1_000_000_000
-        var dt2 = other + offset_seconds * 1_000_000_000
-        return dt1.to_datetime().same_day(dt2.to_datetime())
-
-    @implicit
-    def __init__(out self, time: Int):
-        self.time = time
+    def __init__(out self, nanoseconds: Int):
+        self.nanoseconds = nanoseconds
 
     @staticmethod
     def from_iso(s: String) raises -> Timestamp:
@@ -273,8 +249,45 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def now() -> Timestamp:
         return Timestamp(time._realtime_nanoseconds())
 
+    def __lt__(self, other: Timestamp) -> Bool:
+        return self.nanoseconds < other.nanoseconds
+
+    def __lt__(self, other: Timeframe) -> Bool:
+        return self < other.start
+
+    def __le__(self, other: Timestamp) -> Bool:
+        return self.nanoseconds <= other.nanoseconds
+
+    def __gt__(self, other: Timestamp) -> Bool:
+        return self.nanoseconds > other.nanoseconds
+
+    def __gt__(self, other: Timeframe) -> Bool:
+        if other.inclusive:
+            return self > other.end
+        else:
+            return self >= other.end
+
+    def __ge__(self, other: Timestamp) -> Bool:
+        return self.nanoseconds >= other.nanoseconds
+
+    def __sub__(self, other: Timestamp) -> Int:
+        return self.nanoseconds - other.nanoseconds
+
+    def __add__(self, other_ns: Int) -> Timestamp:
+        return Timestamp(self.nanoseconds + other_ns)
+
+    def __iadd__(mut self, other_ns: Int):
+        self.nanoseconds += other_ns
+
+    def same_day(self,other: Timestamp, offset_seconds:Int = 0) -> Bool:
+        """Check if two timestamps are on the same day given a timezone."""
+        var dt1 = self + offset_seconds * 1_000_000_000
+        var dt2 = other + offset_seconds * 1_000_000_000
+        return dt1.to_datetime().same_day(dt2.to_datetime())
+
+
     def to_unix_timestamp(self) -> Float64:
-        return Float64(self.time)/1_000_000_000.0 
+        return Float64(self.nanoseconds)/1_000_000_000.0 
 
     @staticmethod
     def __civil_from_days(days: Int) -> Tuple[Int, Int, Int]:
@@ -295,7 +308,7 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def to_datetime(self) -> UTCDateTime:
         """Convert Unix timestamp in NANOSECONDS since epoch to UTC datetime."""
         # Floor division gives correct behavior for negative (pre-1970) timestamps
-        var total_ns = self.time
+        var total_ns = self.nanoseconds
         var total_seconds = total_ns // 1_000_000_000
         var nanosecond = total_ns - total_seconds * 1_000_000_000
         # nanosecond is now in [0, 999_999_999] even for negative total_ns

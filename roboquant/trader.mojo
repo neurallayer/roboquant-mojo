@@ -6,6 +6,9 @@ from .money import Amount
 from .time import Timestamp
 from decimo import RoundingMode, ROUND_DOWN
 from std.os import abort
+from std.logger import Logger
+
+comptime logger = Logger()
 
 trait Trader:
     """
@@ -31,7 +34,7 @@ struct FlexTrader(Trader):
     The trader uses a fixed order amount to determine the size of the orders to be placed.
 
     Attributes:
-        order_amount (Amount): The fixed amount to be used for calculating the order size.
+        order_amount: The fixed amount to be used for calculating the order size.
     """
 
     var order_amount: Amount
@@ -49,24 +52,24 @@ struct FlexTrader(Trader):
         if not signals:
             return []
         var orders: List[Order] = []
+        var buying_power = account.buying_power.value
         for signal in signals:
             var position_size = account.get_position_size(signal.asset)
-            var size: Size
+            var size = Size.zero()
             if position_size.is_zero() and signal.is_sell():
                 continue
             elif position_size.is_positive() and signal.is_sell():
                 size = - position_size
             else:
-                if account.buying_power < 0:
-                    continue
-                var price = event.get_price(signal.asset)
-                if not price:
-                    continue
-                size = self.get_order_size(signal, price.value(), event.time, "1")
+                if case .Some(price) = event.get_price(signal.asset):
+                    size = self.get_order_size(signal, price, event.time, "1")
+                    buying_power -= signal.asset.value(size, price).value
+                    if buying_power < 0:
+                        continue
 
             if not size.is_zero():
                 var order = Order.market_order(signal.asset, size)
-                orders.append(order)
+                orders.append(order^)
 
         return orders^
 
@@ -74,9 +77,14 @@ struct FlexTrader(Trader):
         """Calculate the order size based on the signal rating, asset price, order amount.
         Time is used when a conversion is needed between the asset currency and the order amount currency.
         """
-        var one_contract_value = signal.asset.value(Size.one(), price).convert_to(self.order_amount.currency, time)
-        var size = signal.rating * self.order_amount.value / one_contract_value.value
-        return round_number(size, step_size)
+        try:
+            var one_contract_value = signal.asset.value(Size.one(), price).convert_to(self.order_amount.currency, time)
+            var size = signal.rating * self.order_amount.value / one_contract_value.value
+            return round_number(size, step_size)
+        except e:
+            # typically we get here if conversion failed.
+            logger.warning(String(e))
+            return Size.zero()
 
 
 def round_number(value: Float64, base: String, rounding_mode: RoundingMode = ROUND_DOWN) -> Size:
@@ -87,7 +95,7 @@ def round_number(value: Float64, base: String, rounding_mode: RoundingMode = ROU
     Internally used for the rounding order sizes.
 
     For example:
-    ```
+    ```mojo
     round_number(3.1899, "0.01") # 3.18
     round_number(3.1899, "0.05") # 3.15
     ```

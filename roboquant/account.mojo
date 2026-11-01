@@ -1,7 +1,7 @@
 from .money import Currency, Wallet, Amount
 from .time import Timestamp
 from .asset import Asset
-from .order import Order, Size
+from .order import Order, Size, OrderTicket
 from std.os import abort
 
 
@@ -96,7 +96,7 @@ struct Account(Writable, Copyable):
 
     var last_update: Timestamp
     var positions: List[Position]
-    var orders: List[Order]
+    var orders: List[OrderTicket]
     var buying_power: Amount
     var cash: Wallet
     var trades: List[Trade]
@@ -152,8 +152,8 @@ struct Account(Writable, Copyable):
             writer.write("none")
  
         writer.write("\norders      : ")
-        for order in self.orders:
-            writer.write(order.size, "@", order.asset.symbol(), " ") 
+        for ticket in self.orders:
+            writer.write(ticket.order.size, "@", ticket.order.asset.symbol(), " ") 
         else:
             writer.write("none")
 

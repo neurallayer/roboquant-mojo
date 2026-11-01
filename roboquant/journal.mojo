@@ -5,7 +5,9 @@ from .order import Order
 from .money import Wallet
 from std.time import perf_counter
 from .time import Timestamp, TimeSeries
+from std.logger import Logger
 
+comptime logger = Logger()
 
 trait Journal:
     """Log and/or store the progress of a run.
@@ -39,10 +41,13 @@ struct EquityTracker(Journal, Writable, Defaultable):
         return (self.equity[len(self.equity) - 1] / self.equity[0]) - 1.0
         
     def track(mut self, account: Account, event: Event, signals: List[Signal], orders: List[Order]) -> None:
-        var w = account.equity()
-        var amt = w.convert_to(account.base_currency(), event.time)
-        self.equity.append(amt.value)
-        self.times.append(event.time)
+        try:
+            var w = account.equity()
+            var amt = w.convert_to(account.base_currency(), event.time)
+            self.equity.append(amt.value)
+            self.times.append(event.time)
+        except e:
+            logger.warning("cannot calculate equity", e)
 
     def to_timeseries(self) -> TimeSeries:
         """Convert the tracked equity and times into a TimeSeries object."""
@@ -75,6 +80,33 @@ struct Printer(Journal, Writable, Defaultable):
         self.signals += len(signals)
         self.orders += len(orders)
         self.account = account.copy()
+
+
+
+@fieldwise_init
+struct ProgressJournal(Journal, Writable, Defaultable):
+    """Tracks few simple metrics like number of events, and singals.""" 
+
+    var trades: Tuple[Int, Int]
+    var signals: Tuple[Int, Int]
+    var orders: Tuple[Int, Int]
+   
+
+    def __init__(out self):
+        self.trades = (0,0)
+        self.signals = (0,0)
+        self.orders = (0,0)
+
+    def track(mut self, account: Account, event: Event, signals: List[Signal], orders: List[Order]) -> None:
+        self.trades[0] += len([1 for t in account.trades if t.size > 0])
+        self.trades[1] += len([1 for t in account.trades if t.size < 0])
+
+        self.signals[0] += len([1 for s in signals if s.rating > 0.0])
+        self.signals[1] += len([1 for s in signals if s.rating < 0.0])
+
+        self.orders[0] += len([1 for o in orders if o.size > 0])
+        self.orders[1] += len([1 for o in orders if o.size < 0])
+       
 
 
 @fieldwise_init

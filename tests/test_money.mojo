@@ -36,7 +36,6 @@ def test_wallet() raises:
     assert_equal(w2[EUR], 100)
 
 
-
 def test_conversion() raises:
     var t = Timestamp.now()
     var amt1 = 100@USD
@@ -46,6 +45,12 @@ def test_conversion() raises:
     var amt_eur = amt1.convert_to(EUR, t)
     assert_almost_equal(amt1.value, amt_eur.value * 1.1)
 
+    try:
+        # below should raise 
+        var _ =  amt1.convert_to("DUMMY", t)
+        assert_equal(1, 0)
+    except:
+        pass
 
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

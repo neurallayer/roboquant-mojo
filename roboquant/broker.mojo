@@ -1,11 +1,12 @@
 
-from .order import Order, TIF
+from .order import Order, TIF, OrderTicket
 from .account import Account, Position, Trade
 from .money import Wallet, Amount, Currency
 from .asset import Asset
 from .feed import Event
 from .time import Timestamp
 from std.logger import Logger
+from std.os import abort
 
 comptime logger = Logger()
 
@@ -25,7 +26,7 @@ trait Broker:
 struct SimBroker(Broker):
     """A simulated broker that tracks positions and a virtual cash wallet while placing orders."""
 
-    var orders: Dict[String, Order]
+    var orders: List[OrderTicket]
     var positions: Dict[Asset, Position]
     var cash: Wallet
     var base_currency: Currency
@@ -33,7 +34,7 @@ struct SimBroker(Broker):
     var tz_offset_seconds: Int
 
     def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), tz_offset_seconds: Int = 0):
-        self.orders = {}
+        self.orders = []
         self.positions = {}
         self.cash = Wallet(deposit)
         self.base_currency = deposit.currency
@@ -41,19 +42,11 @@ struct SimBroker(Broker):
         self.tz_offset_seconds = tz_offset_seconds
 
     def place_orders(mut self, orders: List[Order]) -> None:
-        for var order in orders:
-
-            match order:
-                case Order(id=.None): # new order
-                    self.order_id += 1
-                    order.id = String(self.order_id)
-                    self.orders[order.id.value()] = order
-                case Order(size=size) if size.is_zero(): # cancel order
-                    self.__remove_order(order)
-                case Order(id=.Some(id)) if id in self.orders: # update order
-                    self.orders[id] = order
-                case _: 
-                    logger.warning("ignored order", order)
+        for ref order in orders:
+            self.order_id += 1
+            var id = String(self.order_id)
+            self.orders.append(OrderTicket(id, order.copy()))
+             
 
     def __update_positions(mut self, event: Event) -> None:
         for ref pos in self.positions.values():
@@ -61,22 +54,15 @@ struct SimBroker(Broker):
                 pos.mkt_price = price
       
 
-    def __has_expired(self, order: Order, time: Timestamp) -> Bool:
-        match order.tif:
+    def __has_expired(self, ticket: OrderTicket, time: Timestamp) -> Bool:
+        match ticket.order.tif:
             case TIF.GTC:
                 return False
             case TIF.DAY:
-                return not time.same_day(order.time.value())
+                return not time.same_day(ticket.time.value())
             case _:
-                logger.error("Unknown TIF:", order.tif)
+                logger.error("Unknown TIF:", ticket.order.tif)
                 return False
-
-    def __remove_order(mut self, order: Order):
-        try:
-            var _ = self.orders.pop(order.id.value())
-        except:
-            logger.error("Order doesn't exist:", order)
-            pass
 
     def __close_position(mut self, pos: Position):
         try:
@@ -90,18 +76,18 @@ struct SimBroker(Broker):
             return []
     
         var trades = List[Trade]()
+        var orders = List[OrderTicket]()
       
-        for var order in self.orders.values():
-            if order.remaining().is_zero() or order.is_cancelled():
-                self.__remove_order(order)
+        for ref ticket in self.orders:
+            if ticket.remaining().is_zero():
                 continue
             
-            if not order.time:
-                order.time = event.time
-            elif self.__has_expired(order, event.time):
-                self.__remove_order(order)
+            if not ticket.time:
+                ticket.time = event.time
+            elif self.__has_expired(ticket, event.time):
                 continue
 
+            ref order = ticket.order
             if case .Some(price) = event.get_price(order.asset):
                 if order.is_executable(price):
                     var pos = self.positions.get(order.asset, Position.empty(order.asset)) 
@@ -113,24 +99,30 @@ struct SimBroker(Broker):
                     self.cash.withdraw(order.value(price))
                     var trade = Trade(order.asset, order.size, price, 0.0, event.time)
                     trades.append(trade^)
-                    self.__remove_order(order)
-              
+                    continue
+            
+            orders.append(ticket.copy())
+
+        self.orders = orders^
         return trades^
     
     def sync(mut self, event: Event) -> Account:
-        var trades = self.__process_orders(event)
+        try:
+            var trades = self.__process_orders(event)
 
-        # update the market price of the positions based on the latest prices from the event
-        self.__update_positions(event)
+            # update the market price of the positions based on the latest prices from the event
+            self.__update_positions(event)
 
-        var bp = self.cash.convert_to(self.base_currency, event.time)
+            var bp = self.cash.convert_to(self.base_currency, event.time)
 
-        return Account(
-            last_update = event.time,
-            positions = List(self.positions.values()),
-            orders = List(self.orders.values()),
-            buying_power=bp,
-            cash=self.cash.copy(),
-            trades=trades^
-        )
+            return Account(
+                last_update = event.time,
+                positions = List(self.positions.values()),
+                orders = self.orders.copy(),
+                buying_power=bp,
+                cash=self.cash.copy(),
+                trades=trades^
+            )
+        except e:
+            abort(String(e))
 

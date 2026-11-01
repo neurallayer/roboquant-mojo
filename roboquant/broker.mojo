@@ -89,7 +89,7 @@ struct SimBroker(Broker):
 
             ref order = ticket.order
             if case .Some(price) = event.get_price(order.asset):
-                if order.is_executable(price):
+                if ticket.is_executable(price):
                     var pos = self.positions.get(order.asset, Position.empty(order.asset)) 
                     pos += order.size
                     if pos.size.is_zero():

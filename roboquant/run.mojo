@@ -31,7 +31,6 @@ def run(
         broker: The broker that syncs the account and places orders.
         journal: The journal that records account, signal and order data.
         timeframe: Optional timeframe restricting which events are processed.
-
     """
     for evt in feed.play():
         if not timeframe or evt.time in timeframe.value():

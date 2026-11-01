@@ -84,35 +84,8 @@ struct Order(Copyable, Writable):
         else:
             return self.asset.value(self.size, price)
 
-    def is_buy(self) -> Bool:
-        """
-        True if this is a BUY order, False otherwise.
-        """
-        return self.size > 0
-
-    def is_sell(self) -> Bool:
-        """
-        True if this is a SELL order, False otherwise.
-        """
-        return self.size < 0
-
     def is_cancelled(self) -> Bool:
         return self.size.is_zero()
-
-
-    def is_executable(self, price: Float64) -> Bool:
-        """Will this order execute given the provided price.
-
-        Args:
-            price: The current market price to check against the order's limit.
-        Returns:
-            True if the order can be executed at the given price, False otherwise.
-        """
-        if self.limit is None:
-            return True
-        
-        var limit = self.limit.value()
-        return price <= limit if self.is_buy() else price >= limit
 
 
 
@@ -128,6 +101,19 @@ struct OrderTicket(Equatable & Hashable & Copyable):
         self.fill = 0
         self.time = None
         self.order = order^
+
+    
+    def is_buy(self) -> Bool:
+        """
+        True if this is a BUY order, False otherwise.
+        """
+        return self.order.size > 0
+
+    def is_sell(self) -> Bool:
+        """
+        True if this is a SELL order, False otherwise.
+        """
+        return self.order.size < 0
 
     
     def remaining(self) -> Size:
@@ -167,5 +153,21 @@ struct OrderTicket(Equatable & Hashable & Copyable):
             result.limit = limit.value()    
         
         return result^
+
+    
+    def is_executable(self, price: Float64) -> Bool:
+        """Will this order execute given the provided price.
+
+        Args:
+            price: The current market price to check against the order's limit.
+        Returns:
+            True if the order can be executed at the given price, False otherwise.
+        """
+        if self.order.limit is None:
+            return True
+        
+        var limit = self.order.limit.value()
+        return price <= limit if self.is_buy() else price >= limit
+
 
 

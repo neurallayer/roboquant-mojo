@@ -3,6 +3,7 @@ from .money import Amount
 from std.os import abort
 from decimo import Decimal128
 from .time import Timestamp
+from std.utils import Variant
 
 
 comptime Size = Decimal128
@@ -34,7 +35,7 @@ struct TIF(ImplicitlyCopyable, Writable, Equatable):
         else:
             writer.write("Unknown TIF")
 
-struct Order(Copyable, Writable):
+struct NewOrder(Copyable, Writable):
     """
     An Order represents a request to buy or sell a specific asset in the market.
 
@@ -66,16 +67,6 @@ struct Order(Copyable, Writable):
         self.limit = limit
         self.tif = tif
     
-    @staticmethod
-    def market_order(asset: Asset, size: Size, tif: TIF = TIF.GTC) -> Order:
-        """Create a new Market Order."""
-        return Order(asset, size, None, tif)
-
-    @staticmethod
-    def limit_order(asset: Asset, size: Size, limit: Float64, tif: TIF = TIF.GTC) -> Order:
-        """Create a new Limit Order."""
-        return Order(asset, size, limit, tif)
-
     def value(self, price: Float64) -> Amount:
         """Return the total order value given the provided price. If the order has a limit set,
         that will be used instead of the price."""
@@ -87,16 +78,44 @@ struct Order(Copyable, Writable):
     def is_cancelled(self) -> Bool:
         return self.size.is_zero()
 
+@fieldwise_init
+struct CancelOrder(Copyable, Writable):
+    var id: String
 
+@fieldwise_init
+struct ModifyOrder(Copyable, Writable):
+    var id: String
+
+@fieldwise_init
+struct Order(Copyable, Writable):
+    var variant : Variant[NewOrder, CancelOrder, ModifyOrder]
+
+    @staticmethod
+    def market_order(asset: Asset, size: Size, tif: TIF = TIF.GTC) -> Self:
+        """Create a new Market Order."""
+        return Self(NewOrder(asset, size, None, tif))
+
+    @staticmethod
+    def limit_order(asset: Asset, size: Size, limit: Float64, tif: TIF = TIF.GTC) -> Self:
+        """Create a new Limit Order."""
+        return Self(NewOrder(asset, size, limit, tif))
+
+    def is_new_order(self) -> Bool:
+        return self.variant.isa[NewOrder]()
+
+    def get_new_order(self) -> Optional[NewOrder]:
+        if self.is_new_order():
+            return self.variant[NewOrder].copy()
+        return None
 
 
 struct OrderTicket(Equatable & Hashable & Copyable):
     var id: String
     var fill: Int
     var time: Optional[Timestamp]
-    var order: Order
+    var order: NewOrder
 
-    def __init__(out self, id: String, var order: Order):
+    def __init__(out self, id: String, var order: NewOrder):
         self.id = id
         self.fill = 0
         self.time = None
@@ -130,13 +149,11 @@ struct OrderTicket(Equatable & Hashable & Copyable):
         else:
             return self.order.asset.value(self.remaining(), price)
 
-    def cancel(self) -> Order:
+    def cancel(self) -> CancelOrder:
         """Create a cancellation order."""
-        var result = self.order.copy()
-        result.size = Size()
-        return result^
+        return CancelOrder(self.id)
 
-    def modify(self, size: Optional[Size], limit: Optional[Float64]) -> Order:
+    def modify(self, size: Optional[Size], limit: Optional[Float64]) -> ModifyOrder:
         """Create a modify order. You can modify the size and/or limit of an existing order.
         If a parameter is not provided, the existing value will be retained.
 
@@ -152,7 +169,7 @@ struct OrderTicket(Equatable & Hashable & Copyable):
         if limit:
             result.limit = limit.value()    
         
-        return result^
+        return ModifyOrder(self.id)
 
     
     def is_executable(self, price: Float64) -> Bool:

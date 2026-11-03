@@ -1,6 +1,6 @@
 from .strategy import Signal
 from .account import Account
-from .order import Order, Size
+from .order import Order, Size, NewOrder
 from .feed import Event
 from .money import Amount
 from .time import Timestamp

@@ -1,5 +1,5 @@
 
-from .order import Order, TIF, OrderTicket
+from .order import NewOrder, Order, TIF, OrderTicket
 from .account import Account, Position, Trade
 from .money import Wallet, Amount, Currency
 from .asset import Asset
@@ -42,12 +42,12 @@ struct SimBroker(Broker):
         self.tz_offset_seconds = tz_offset_seconds
 
     def place_orders(mut self, orders: List[Order]) -> None:
-        for ref order in orders:
-            self.order_id += 1
-            var id = String(self.order_id)
-            self.orders.append(OrderTicket(id, order.copy()))
-             
-
+        for order in orders:
+            if case .Some(new_order) = order.get_new_order():
+                self.order_id += 1
+                var id = String(self.order_id)
+                self.orders.append(OrderTicket(id, new_order.copy()))
+    
     def __update_positions(mut self, event: Event) -> None:
         for ref pos in self.positions.values():
             if case .Some(price) = event.get_price(pos.asset):

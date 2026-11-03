@@ -2,7 +2,7 @@ from std.time import perf_counter
 from roboquant.feed import random_walk, HistoricFeed
 from roboquant.trader import FlexTrader
 from roboquant.broker import SimBroker
-from roboquant.journal import EquityTracker, ProgressJournal
+from roboquant.journal import EquityTracker
 from roboquant.time import Timeframe
 from roboquant.run import run
 from roboquant.strategy import EMACrossOver
@@ -14,15 +14,12 @@ def measure_run(feed: HistoricFeed, tf: Optional[Timeframe]) raises:
     var trader = FlexTrader()
     var broker = SimBroker()
     var journal = EquityTracker()
-
-    # var journal = ProgressJournal()
-
     var start = perf_counter()
+ 
     run(feed, strategy, trader, broker, journal, tf)
     var performance = journal.get_performance() * 100.0
     print(tf or feed.timeframe(), "=>", round(perf_counter() - start,4), "seconds, equity:", round(performance,2), "%")
-    #print(tf or feed.timeframe(), "=>", round(perf_counter() - start,4), "seconds progres:", journal)
-
+ 
 
 def main() raises:
     # 10-minute bars for 26 years

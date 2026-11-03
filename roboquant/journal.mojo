@@ -82,33 +82,6 @@ struct Printer(Journal, Writable, Defaultable):
         self.account = account.copy()
 
 
-
-@fieldwise_init
-struct ProgressJournal(Journal, Writable, Defaultable):
-    """Tracks few simple metrics like number of events, and singals.""" 
-
-    var trades: Tuple[Int, Int]
-    var signals: Tuple[Int, Int]
-    var orders: Tuple[Int, Int]
-   
-
-    def __init__(out self):
-        self.trades = (0,0)
-        self.signals = (0,0)
-        self.orders = (0,0)
-
-    def track(mut self, account: Account, event: Event, signals: List[Signal], orders: List[Order]) -> None:
-        self.trades[0] += len([1 for t in account.trades if t.size > 0])
-        self.trades[1] += len([1 for t in account.trades if t.size < 0])
-
-        self.signals[0] += len([1 for s in signals if s.rating > 0.0])
-        self.signals[1] += len([1 for s in signals if s.rating < 0.0])
-
-        self.orders[0] += len([1 for o in orders if o.size > 0])
-        self.orders[1] += len([1 for o in orders if o.size < 0])
-       
-
-
 @fieldwise_init
 struct TradeTracker(Journal, Writable):
     """Tracks all the trades that are executed during a run."""

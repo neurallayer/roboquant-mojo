@@ -1,5 +1,5 @@
 
-from .order import NewOrder, Order, TIF, OrderTicket
+from .order import NewOrder, Order, TIF, OrderTicket, Size
 from .account import Account, Position, Trade
 from .money import Wallet, Amount, Currency
 from .asset import Asset
@@ -32,6 +32,7 @@ struct SimBroker(Broker):
     var base_currency: Currency
     var order_id: Int
     var tz_offset_seconds: Int
+    var fee_pct: Float64
 
     def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), tz_offset_seconds: Int = 0):
         self.orders = []
@@ -40,6 +41,7 @@ struct SimBroker(Broker):
         self.base_currency = deposit.currency
         self.order_id = 0
         self.tz_offset_seconds = tz_offset_seconds
+        self.fee_pct = 0.0
 
     def place_orders(mut self, orders: List[Order]) -> None:
         for order in orders:
@@ -70,8 +72,41 @@ struct SimBroker(Broker):
         except:
             pass
 
+    def __update_position(mut self, asset: Asset, fill: Size, price: Float64) raises -> Amount:
+        """update position based on a fill and return the realized pnl"""
+        if fill.is_zero():
+            return Amount(asset.currency(), 0.0)
 
-    def __process_orders(mut self, ref event: Event) -> List[Trade]:
+        var pos = self.positions.get(asset, Position.zero(asset))
+
+        var new_size = pos.size + fill
+        var avg_price: Float64
+        var pnl: Amount
+
+        # position increase
+        if (pos.size >= 0 and fill > 0) or (pos.size <= 0 and fill < 0):
+            avg_price = (pos.avg_price * Float64(pos.size) + price * Float64(fill)) / Float64(new_size)
+            pnl = Amount(asset.currency(), 0)
+
+        # position decrease
+        elif (pos.size >= 0 and new_size > 0) or (pos.size <= 0 and new_size < 0):
+            avg_price = pos.avg_price
+            pnl = asset.value(fill, price - pos.avg_price)
+
+        # close or switch position side
+        else:
+            avg_price = price
+            pnl = asset.value(pos.size, price - pos.avg_price)
+
+        if new_size:
+            self.positions[asset] = Position(asset, new_size, avg_price, pos.mkt_price)
+        else:
+            self.__close_position(pos)
+
+        return pnl
+
+
+    def __process_orders(mut self, ref event: Event) raises -> List[Trade]:
         if not self.orders:
             return []
     
@@ -90,14 +125,9 @@ struct SimBroker(Broker):
             ref order = ticket.order
             if case .Some(price) = event.get_price(order.asset):
                 if ticket.is_executable(price):
-                    var pos = self.positions.get(order.asset, Position.empty(order.asset)) 
-                    pos += order.size
-                    if pos.size.is_zero():
-                        self.__close_position(pos)
-                    else:
-                        self.positions[order.asset] = pos^
-                    self.cash.withdraw(order.value(price))
-                    var trade = Trade(order.asset, order.size, price, 0.0, event.time)
+                    var pnl = self.__update_position(order.asset.copy(), ticket.remaining(), price)
+                    var trade = Trade(order.asset, order.size, price, pnl, event.time)
+                    self.cash.withdraw(trade.value())
                     trades.append(trade^)
                     continue
             

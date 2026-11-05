@@ -55,28 +55,17 @@ struct NewOrder(Copyable, Writable):
 
     var limit: Optional[Float64]
     """Optionally a limit price for the order.
-    If not set, the order is handled as a market order.
+    If not set, the order is processed as a market order.
     """
 
     var tif: TIF
-    """Time In Force, DAY or GTC."""
+    """Time In Force, either DAY or GTC."""
 
-    def __init__(out self, asset: Asset, size: Size, limit: Optional[Float64], tif: TIF = TIF.DAY, id: Optional[String] = None, fill: Size = Size.zero(), time: Optional[Timestamp] = None):
+    def __init__(out self, asset: Asset, size: Size, limit: Optional[Float64], tif: TIF):
         self.asset = asset
         self.size = size
         self.limit = limit
         self.tif = tif
-    
-    def value(self, price: Float64) -> Amount:
-        """Return the total order value given the provided price. If the order has a limit set,
-        that will be used instead of the price."""
-        if self.limit:
-            return self.asset.value(self.size, self.limit.value())
-        else:
-            return self.asset.value(self.size, price)
-
-    def is_cancelled(self) -> Bool:
-        return self.size.is_zero()
 
 @fieldwise_init
 struct CancelOrder(Copyable, Writable):
@@ -185,6 +174,4 @@ struct OrderTicket(Equatable & Hashable & Copyable):
         
         var limit = self.order.limit.value()
         return price <= limit if self.is_buy() else price >= limit
-
-
 

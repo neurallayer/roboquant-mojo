@@ -15,7 +15,9 @@ struct SignalType(Writable, ImplicitlyCopyable, Equatable):
 
 
 struct Signal(Writable, ImplicitlyCopyable):
-    """Represents a trading signal for an asset with a rating."""
+    """Represents a trading signal for an asset with a rating.
+    A rating has typically a value between -1.0 (strong sell) and 1.0 (strong buy).
+    """
 
     var asset: Asset
     var rating: Float64
@@ -49,11 +51,20 @@ struct Signal(Writable, ImplicitlyCopyable):
 
 trait Strategy:
     """A Strategy is responsible for creating trading signals based on market data events.
-    This trait defines the interface for a Strategy, which is used by the roboquant framework
-    to generate signals for trading.
+    This trait defines the interface for a Strategy.
     """
 
     def create_signals(mut self, event: Event) -> List[Signal]:
+        """
+        Strategies should implement this method and based on the event generate
+        zero or more signals.
+
+        Args:
+            event: The event containing its timestamp and the market data.
+
+        Returns:
+            One or more signals.
+        """
         ...
 
 

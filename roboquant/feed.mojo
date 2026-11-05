@@ -102,11 +102,7 @@ struct Event(Sized, Copyable):
 
 @fieldwise_init
 struct HistoricFeed:
-    """
-    A RandomWalkFeed generates a sequence of Events with randomized Bar price data for testing purposes.
-    It simulates a random walk in asset prices over a specified time range and step interval.
-    The feed can be used to test trading strategies and algorithms in a controlled environment.
-    """
+    """Feed that contains historic market data."""
 
     var events: List[Event]
 
@@ -149,6 +145,12 @@ struct HistoricFeed:
 
 
 def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int = 10) raises -> HistoricFeed:
+    """
+    A RandomWalkFeed generates a sequence of Events with randomized Bar price data for testing purposes.
+    It simulates a random walk in asset prices over a specified time range and step interval.
+    The feed can be used to test trading strategies and algorithms in a controlled environment.
+    """
+
     var symbols = Set[String]()
     while len(symbols) < n_assets: 
         var symbol = String()
@@ -177,6 +179,7 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
             var bar = Candle(price, price*1.01, price*0.99, price, 10_000)
             var _ = items.insert(asset, PriceItem(bar^))
             prices[asset] = price * randn_float64(mean=1.0, standard_deviation=0.001)
+
         var evt = Event(time, items^)
         events.append(evt^)
         time += step_ns

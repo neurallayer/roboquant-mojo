@@ -149,60 +149,60 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
     This is a mutable struct.
     """
 
-    var values: Dict[Currency, Float64]
+    var balances: Dict[Currency, Float64]
 
     def __init__(out self):
-        self.values = {}
+        self.balances = {}
 
     def __init__(out self, values: Dict[Currency, Float64]):
-        self.values = values.copy()
+        self.balances = values.copy()
 
     def __init__(out self, *amounts: Amount):
-        self.values = {}
+        self.balances = {}
         for amount in amounts:
             var k = amount.currency
-            var v = self.values.get(k, 0.0)
-            self.values[k] = v + amount.value
+            var v = self.balances.get(k, 0.0)
+            self.balances[k] = v + amount.value
 
     def __round__(self) -> Wallet:
-        var rounded = {item.key: round(item.value) for item in self.values.items()}
+        var rounded = {item.key: round(item.value) for item in self.balances.items()}
         return Self(rounded)
 
     def __round__(self, number: Int) -> Wallet:
-        var rounded = {item.key: round(item.value, number) for item in self.values.items()}
+        var rounded = {item.key: round(item.value, number) for item in self.balances.items()}
         return Self(rounded)
     
     def deposit(mut self, amount: Amount):
         var k = amount.currency
-        var v = self.values.get(k, 0.0)
-        self.values[k] = v + amount.value
+        var v = self.balances.get(k, 0.0)
+        self.balances[k] = v + amount.value
 
     def deposit(mut self, wallet: Wallet):
-        for item in wallet.values.items():
+        for item in wallet.balances.items():
             var k = item.key
-            var v = self.values.get(k, 0.0)
-            self.values[k] = v + item.value
+            var v = self.balances.get(k, 0.0)
+            self.balances[k] = v + item.value
 
     def withdraw(mut self, wallet: Wallet):
-        for item in wallet.values.items():
+        for item in wallet.balances.items():
             var k = item.key
-            var v = self.values.get(k, 0.0)
-            self.values[k] = v - item.value
+            var v = self.balances.get(k, 0.0)
+            self.balances[k] = v - item.value
 
     def withdraw(mut self, amount: Amount):
         var k = amount.currency
-        var v = self.values.get(k, 0.0)
-        self.values[k] = v - amount.value
+        var v = self.balances.get(k, 0.0)
+        self.balances[k] = v - amount.value
 
     def amounts(self) -> List[Amount]:
-        return [Amount(item.key, item.value) for item in self.values.items()]
+        return [Amount(item.key, item.value) for item in self.balances.items()]
     
     def write_to(self, mut writer: Some[Writer]):
         for item in self.amounts():
             writer.write(item, " ") 
 
     def get(self, currency: Currency) -> Amount:
-        var value = self.values.get(currency, 0.0)
+        var value = self.balances.get(currency, 0.0)
         return Amount(currency, value) 
 
     def __getitem__(self, currency: Currency) -> Amount:
@@ -215,15 +215,15 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
         self.withdraw(amt)
 
     def __len__(self) -> Int:
-        return len(self.values)
+        return len(self.balances)
 
     def convert_to(self, currency: Currency, time: Timestamp) raises -> Amount:
         if len(self) == 0:
             return Amount(currency, 0.0)
 
         # Optimized path for single currency 
-        if len(self) == 1 and currency in self.values:
-            return Amount(currency, self.values[currency])
+        if len(self) == 1 and currency in self.balances:
+            return Amount(currency, self.balances[currency])
 
         var total = 0.0
         for amount in self.amounts():

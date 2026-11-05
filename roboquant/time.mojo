@@ -19,10 +19,11 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
     Represents a time interval with a start and end timestamp, and an optional inclusive flag.
     The Timeframe struct provides methods to check if a timestamp is within the interval,
     split the interval into smaller intervals, and format the interval for display.
+
     Attributes:
-        start (Timestamp): The starting timestamp of the interval.
-        end (Timestamp): The ending timestamp of the interval.
-        inclusive (Bool): A flag indicating whether the end timestamp is inclusive.
+        start: The starting timestamp of the interval.
+        end: The ending timestamp of the interval.
+        inclusive: A flag indicating whether the end timestamp is inclusive.
     """
 
     comptime EMPTY = Timeframe(TIME_MIN, TIME_MIN, False)
@@ -240,6 +241,10 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
             The converted timestamp.
         """
         var args = s.split("-")
+        if len(args) == 1:
+            var y = Int(args[0])
+            return UTCDateTime(y,1,1,0,0,0,0).timestamp()
+
         var y = Int(args[0])
         var m = Int(args[1])
         var d = Int(args[2])

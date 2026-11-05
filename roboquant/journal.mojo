@@ -97,10 +97,15 @@ struct TradeTracker(Journal, Writable):
     def pnl(self) -> Wallet:
         var result = Wallet()
         for trade in self.trades:
-            result.deposit(trade.pnl())
+            result.deposit(trade.pnl)
         return result^
 
     def to_timeseries(self) -> TimeSeries:
         var times = [trade.time for trade in self.trades]
         var prices = [trade.price for trade in self.trades]
-        return TimeSeries.univariate("price", times^, prices^)
+        var pnl = [trade.pnl.value for trade in self.trades]
+        var data = {
+            "price" : prices^,
+            "pnl": pnl^
+        }
+        return TimeSeries(times^, data^)

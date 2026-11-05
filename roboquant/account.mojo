@@ -17,33 +17,28 @@ struct Trade(Copyable, Writable):
     """Represents a single executed trade with an asset, size, price, and realized PnL value.
 
     Attributes:
-        asset (Asset): The underlying asset of the trade.
-        size (Size): The size of the trade.
-        price (Float64): The execution price of the trade.
-        pnl_value (Float64): The realized Profit and Loss value of the trade.
+        asset: The underlying asset of the trade.
+        size: The size of the trade.
+        price: The execution price of the trade.
+        pnl: The realized Profit and Loss value of the trade, typically denoted in 
+            the same currency as the asset.
         time: The time the trade was executed.
     """
 
     var asset: Asset
     var size: Size
     var price: Float64
-    var pnl_value: Float64
+    var pnl: Amount
     var time: Timestamp
-
-    def pnl(self) -> Amount:
-        """The realized Profit and Loss amount by this trade."""
-        return Amount(self.asset.currency(), self.pnl_value)
 
     def value(self) -> Amount:
         return self.asset.value(self.size, self.price)
-
-    def pnl_pct(self) -> Float64:
-        return self.pnl_value / self.value().value
 
 
 struct Position(Copyable, Writable):
     """
     Represents a position in a specific asset, including the size, average price, and market price.
+
     Attributes:
         asset (Asset): The underlying asset of the position.
         size (Size): The size of the position.
@@ -63,7 +58,7 @@ struct Position(Copyable, Writable):
         self.mkt_price = mkt_price
 
     @staticmethod
-    def empty(asset: Asset) -> Position:
+    def zero(asset: Asset) -> Position:
         return Position(asset, Size(), 0, 0)
 
     def __iadd__(mut self, other: Size) -> None :
@@ -85,7 +80,7 @@ struct Position(Copyable, Writable):
 struct Account(Writable, Copyable):
     """Represents a trading account with positions, orders, trades, buying power, and cash.
 
-    Attributes:
+    Attrs:
         last_update: The timestamp of the last update to the account.
         positions: A list of open positions in the account. Support for both hedging and non-hedging accounts is provided, allowing for multiple positions in the same asset.
         orders: A list of open orders in the account.
@@ -112,6 +107,12 @@ struct Account(Writable, Copyable):
         return result^
 
     def get_position_size(self, asset: Asset) -> Size:
+        """Return the netting position size for an asset.
+
+        Args:
+            asset: The asset for which to calculate the netting size.
+        """
+
         try:
             var position_sizes = [p.size for ref p in self.positions if p.asset == asset]
             var total = Size()
@@ -130,7 +131,7 @@ struct Account(Writable, Copyable):
 
     def realized_pnl(self) -> Wallet:
         """The realized Profit & Loss made by executed trades."""
-        return sum[lambda (t: Trade) -> Amount : t.pnl()](self.trades)
+        return sum[lambda (t: Trade) -> Amount : t.pnl](self.trades)
 
     def equity(self) -> Wallet:
         """The total equity of the account, which is the sum of cash and

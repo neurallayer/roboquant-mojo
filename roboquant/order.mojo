@@ -162,10 +162,12 @@ struct OrderTicket(Equatable & Hashable & Copyable):
 
     
     def is_executable(self, price: Float64) -> Bool:
-        """Will this order execute given the provided price.
+        """Will this order execute given the provided price. A market order will
+        always execute, a limit order only if the price is right.
 
         Args:
             price: The current market price to check against the order's limit.
+
         Returns:
             True if the order can be executed at the given price, False otherwise.
         """

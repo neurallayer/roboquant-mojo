@@ -231,6 +231,24 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def __init__(out self, nanoseconds: Int):
         self.nanoseconds = nanoseconds
 
+    def __init__(s: String) raises -> Timestamp:
+        """
+        Convert an ISO format string to a timestamp.
+        Args:
+            s: The ISO format string to convert.
+        Returns:
+            The converted timestamp.
+        """
+        var args = s.split("-")
+        if len(args) == 1:
+            var y = Int(args[0])
+            return UTCDateTime(y,1,1,0,0,0,0).timestamp()
+
+        var y = Int(args[0])
+        var m = Int(args[1])
+        var d = Int(args[2])
+        return UTCDateTime(y,m,d,0,0,0,0).timestamp()
+
     @staticmethod
     def from_iso(s: String) raises -> Timestamp:
         """

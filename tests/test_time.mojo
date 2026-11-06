@@ -1,5 +1,5 @@
 from std.testing import assert_equal, assert_true, assert_not_equal, assert_almost_equal, TestSuite
-from roboquant.time import Timestamp
+from roboquant.time import Timestamp, Timeframe
 
 
 def test_timestamp() raises:
@@ -7,6 +7,13 @@ def test_timestamp() raises:
     var dt1 = ts1.to_datetime()
     var ts2: Timestamp = dt1.timestamp()
     assert_equal(ts1, ts2)
+    
+
+def test_timeframe() raises:
+    var tf = Timeframe("2000", "2002")
+    var ts1: Timestamp = Timestamp("2001-01-01")
+    assert_true(ts1 in tf)
+ 
     
     
 def main() raises:

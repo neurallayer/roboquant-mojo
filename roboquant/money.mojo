@@ -94,15 +94,10 @@ comptime _CONVERTER = Converter()
 
 @fieldwise_init
 struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
-    """Holds the monetary amount of a single currency. 
-    Should be threated like an immutable struct."""
+    """Holds the monetary value of a single currency."""
 
     var currency: Currency
     var value: Float64
-
-    def __init__(out self, currency_code: String, value: Float64):
-        self.currency = Currency(currency_code)
-        self.value = value
 
     def __round__(self) -> Amount:
         return Self(self.currency, round(self.value))
@@ -111,7 +106,7 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
         return Self(self.currency, round(self.value, number))
 
     @staticmethod
-    def empty(currency: Currency = Currency.USD) -> Self:
+    def zero(currency: Currency = Currency.USD) -> Self:
         return Self(currency, 0.0)
 
     def write_to(self, mut writer: Some[Writer]):

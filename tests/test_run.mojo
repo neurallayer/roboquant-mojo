@@ -14,8 +14,8 @@ def measure_run(feed: HistoricFeed, tf: Optional[Timeframe]) raises:
     var trader = FlexTrader()
     var broker = SimBroker()
     var journal = EquityTracker()
+
     var start = perf_counter()
- 
     run(feed, strategy, trader, broker, journal, tf)
     var performance = journal.get_performance() * 100.0
     print(tf or feed.timeframe(), "=>", round(perf_counter() - start,4), "seconds, equity:", round(performance,2), "%")

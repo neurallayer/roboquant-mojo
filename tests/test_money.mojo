@@ -22,18 +22,18 @@ def test_wallet() raises:
     var w1 = Wallet()
     w1.deposit(amt1)
     w1.deposit(amt1)
-    assert_equal(w1["USD"], 200)
+    assert_equal(w1["USD"].value, 200)
 
     w1 += amt1
-    assert_equal(w1[USD], 300)
+    assert_equal(w1[USD].value, 300)
 
     w1.deposit(500@EUR)
-    assert_equal(w1[EUR], 500)
+    assert_equal(w1[EUR].value, 500)
     assert_equal(len(w1), 2)
 
     var w2 = 100@EUR + 100@USD
-    assert_equal(w2[USD], 100)
-    assert_equal(w2[EUR], 100)
+    assert_equal(w2[USD].value, 100)
+    assert_equal(w2[EUR].value, 100)
 
 
 def test_conversion() raises:

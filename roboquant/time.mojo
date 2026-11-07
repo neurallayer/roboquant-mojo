@@ -224,6 +224,55 @@ struct UTCDateTime(Copyable, Movable, Writable):
         writer.write("Z")
 
 
+def _parse_iso_timestamp(s: String) raises -> Timestamp:
+    """Parse an ISO-8601 date or datetime string into a Timestamp.
+
+    Supported formats are "2020", "2020-05", "2023-01-01",
+    "2023-01-01 12:00", "1999-01-01T12:00:00", and variants with
+    fractional seconds ("1999-01-01T12:00:00.250") and/or a
+    trailing UTC designator ("1999-01-01T12:00:00Z").
+    """
+    var text = s.strip()
+
+    # Drop a trailing UTC designator, if present.
+    var z_parts = text.split("Z")
+    if len(z_parts) > 1:
+        text = z_parts[0]
+
+    # Separate the date part from the optional time part.
+    var parts = text.split("T")
+    if len(parts) == 1:
+        parts = text.split(" ")
+    var date_part = parts[0]
+    var date_args = date_part.split("-")
+    var year = Int(date_args[0])
+    var month = 1
+    var day = 1
+    if len(date_args) > 1:
+        month = Int(date_args[1])
+    if len(date_args) > 2:
+        day = Int(date_args[2])
+
+    var hour = 0
+    var minute = 0
+    var second = 0
+    var nanosecond = 0
+
+    if len(parts) > 1:
+        var time_part = parts[1] 
+        var time_args = time_part.split(":")
+        hour = Int(time_args[0])
+        if len(time_args) > 1:
+            minute = Int(time_args[1])
+        if len(time_args) > 2:
+            var sec_args = time_args[2].split(".")
+            second = Int(sec_args[0])
+            if len(sec_args) > 1:
+                nanosecond = Int(Float64("0." + sec_args[1]) * 1_000_000_000.0)
+
+    return UTCDateTime(year, month, day, hour, minute, second, nanosecond).timestamp()
+
+
 struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equatable, Writable, Hashable):
 
     var nanoseconds: Int
@@ -235,38 +284,24 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
         """
         Convert an ISO format string to a timestamp.
         Args:
-            s: The ISO format string to convert.
+            s: The ISO format string to convert, for example "2020",
+                "2023-01-01" or "1999-01-01T12:00:00".
         Returns:
             The converted timestamp.
         """
-        var args = s.split("-")
-        if len(args) == 1:
-            var y = Int(args[0])
-            return UTCDateTime(y,1,1,0,0,0,0).timestamp()
-
-        var y = Int(args[0])
-        var m = Int(args[1])
-        var d = Int(args[2])
-        return UTCDateTime(y,m,d,0,0,0,0).timestamp()
+        return _parse_iso_timestamp(s)
 
     @staticmethod
     def from_iso(s: String) raises -> Timestamp:
         """
         Convert an ISO format string to a timestamp.
         Args:
-            s: The ISO format string to convert.
+            s: The ISO format string to convert, for example "2020",
+                "2023-01-01" or "1999-01-01T12:00:00".
         Returns:
             The converted timestamp.
         """
-        var args = s.split("-")
-        if len(args) == 1:
-            var y = Int(args[0])
-            return UTCDateTime(y,1,1,0,0,0,0).timestamp()
-
-        var y = Int(args[0])
-        var m = Int(args[1])
-        var d = Int(args[2])
-        return UTCDateTime(y,m,d,0,0,0,0).timestamp()
+        return _parse_iso_timestamp(s)
 
     @staticmethod
     def now() -> Timestamp:

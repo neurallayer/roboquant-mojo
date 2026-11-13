@@ -1,4 +1,6 @@
 from std.time import perf_counter
+from std.testing import assert_equal, assert_true, assert_not_equal, assert_almost_equal, TestSuite
+
 from roboquant.feed import random_walk, HistoricFeed
 from roboquant.trader import FlexTrader
 from roboquant.broker import SimBroker
@@ -9,7 +11,7 @@ from roboquant.strategy import EMACrossOver
 from std.math import round
 
 
-def measure_run(feed: HistoricFeed, tf: Optional[Timeframe]) raises:
+def _measure_run(feed: HistoricFeed, tf: Optional[Timeframe]) raises:
     var strategy = EMACrossOver()
     var trader = FlexTrader()
     var broker = SimBroker()
@@ -21,15 +23,18 @@ def measure_run(feed: HistoricFeed, tf: Optional[Timeframe]) raises:
     print(tf or feed.timeframe(), "=>", round(perf_counter() - start,4), "seconds, equity:", round(performance,2), "%")
  
 
-def main() raises:
+def test_run() raises:
     # 10-minute bars for 26 years
     var feed = random_walk(start="2000-01-01",end="2026-01-01", step_seconds = 600.0, n_assets=10)
-    print("feed bars is ", feed.count_items())
+    # print("feed bars is ", feed.count_items())
   
     # Run over the entire feed timeframe
-    measure_run(feed, None)
+    _measure_run(feed, None)
 
     # Simulate a walk forward
     for tf in feed.timeframe().split(4):
-        measure_run(feed, tf)
+        _measure_run(feed, tf)
 
+
+def main() raises:
+    TestSuite.discover_tests[__functions_in_module()]().run()

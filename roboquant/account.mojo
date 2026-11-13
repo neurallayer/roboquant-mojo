@@ -97,6 +97,7 @@ struct Account(Writable, Copyable):
     var trades: List[Trade]
 
     def base_currency(self) -> Currency:
+        """Return the base currency of the account."""
         return self.buying_power.currency
 
     def mkt_value(self) -> Wallet:

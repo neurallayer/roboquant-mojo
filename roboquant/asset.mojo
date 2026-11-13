@@ -25,7 +25,7 @@ struct Symbol(ImplicitlyCopyable, Writable, Equatable, Hashable):
         self.value = value
 
 @fieldwise_init
-struct AssetData(ImplicitlyCopyable, Writable, Equatable, Hashable):
+struct __AssetData(ImplicitlyCopyable, Writable, Equatable, Hashable):
     """
     The Asset struct represents a financial instrument that can be traded in the market.
     It is uniquely identified by only its symbol, which is a string representing the asset's ticker or identifier.
@@ -64,30 +64,30 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
     the type of asset (e.g., stock, option, forex, crypto), and the contract size for trading purposes.
     """
 
-    var data: ArcPointer[AssetData]
+    var data: ArcPointer[__AssetData]
    
     @staticmethod
     def Stock(symbol: Symbol, currency: Currency = Currency.USD) -> Asset:
         """Create a new Stock with the provided symbol and currency."""
-        var data = AssetData(symbol, currency, AssetType.STOCK, Size.one())
+        var data = __AssetData(symbol, currency, AssetType.STOCK, Size.one())
         return Asset(ArcPointer(data))
 
     @staticmethod
     def Forex(symbol: Symbol, currency: Currency, contract_size: Size = Size.one()) -> Asset:
         """Create a new Forex with the provided symbol and currency."""
-        var data = AssetData(symbol, currency, AssetType.FOREX, contract_size)
+        var data = __AssetData(symbol, currency, AssetType.FOREX, contract_size)
         return Asset(ArcPointer(data))
 
     @staticmethod
     def Crypto(symbol: Symbol, currency: Currency, contract_size: Size = Size.one()) -> Asset:
         """Create a new Crypto with the provided symbol and currency."""
-        var data = AssetData(symbol, currency, AssetType.FOREX, contract_size)
+        var data = __AssetData(symbol, currency, AssetType.FOREX, contract_size)
         return Asset(ArcPointer(data))
 
     @staticmethod
     def Option(symbol: Symbol, currency: Currency = Currency.USD) -> Asset:
         """Create a new Stock with the provided symbol and currency."""
-        var data = AssetData(symbol, currency, AssetType.OPTION, Size(100))
+        var data = __AssetData(symbol, currency, AssetType.OPTION, Size(100))
         return Asset(ArcPointer(data))
 
     def symbol(self) -> Symbol:
@@ -101,11 +101,9 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
 
     def value(self, size: Size, price: Float64) -> Amount:
         """Return the monetary amount given the size and price."""
-        try:
-            ref asset = self.data.ptr()[]
-            var value = Float64(asset.contract_size * size) * price
-            return Amount(asset.currency, value)
-        except:
-            abort()
+        ref asset = self.data.ptr()[]
+        var value = Float64(asset.contract_size) * Float64(size) * price
+        return Amount(asset.currency, value)
+
 
 

@@ -11,11 +11,11 @@ perf = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["build"
 test = { cmd = "./tests/run_tests.sh", depends-on = ["build"]}
 
 
-
 [dependencies]
-mojo = "==1.2.0"
+mojo = ">=1.2.0"
 decimo = ">=0.16.0,<0.17"
 python = "==3.14"
 matplotlib = ">=3.11.2,<4"
 numpy = ">=2.5.3,<3"
+mojo_csv = ">=1.8.1,<2"
 

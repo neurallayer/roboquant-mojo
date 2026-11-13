@@ -6,7 +6,9 @@ from std.utils import Variant
 from std.random import random_float64, randn_float64, seed, random_ui64, shuffle
 from std.os import abort
 from std.collections import Set
-
+from std.os import listdir
+from mojo_csv import CsvReader
+from std.pathlib import Path
 
 @fieldwise_init
 struct Candle(Copyable):
@@ -187,3 +189,28 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
             break
 
     return HistoricFeed(events^)
+
+
+def parse_csv_file(filename: String):
+    try:
+        var csv_path = Path(filename)
+        var reader = CsvReader(csv_path)
+        print(len(reader)) # total element count
+        for row in reader:
+            print(row[0])
+    except:
+        print("Error")
+
+
+def csv_feed(dir_path: String) raises -> HistoricFeed:
+    var events = Dict[Timestamp, Dict[Asset, PriceItem]]()
+    var all_entries = listdir(dir_path)
+    var csv_files = List[String]()
+    
+    for entry in all_entries:
+        if entry.endswith(".csv"):
+            parse_csv_file(entry)
+
+    var result = [Event(elem.key,elem.value.copy()) for elem in events.items()]
+    return HistoricFeed(result^)
+

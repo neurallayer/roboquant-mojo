@@ -12,11 +12,14 @@ comptime logger = Logger()
 
 
 trait Broker:
-    """Brokers are not copyable, since they typically hold connections 
+    """Broker if responsible for placing orders at the real broker and communicating
+    back the latest state through the account object.
+
+    Brokers are not copyable, since they typically hold connections 
     to a real brokers API end-points.""" 
 
     def place_orders(mut self, orders: List[Order]) -> None:
-        """Place the orders at the broker."""
+        """Place zero or more orders at the broker."""
         ...
 
     def sync(mut self, event: Event) -> Account:
@@ -50,12 +53,7 @@ struct SimBroker(Broker):
                 var id = String(self.order_id)
                 self.orders.append(OrderTicket(id, new_order.copy()))
     
-    def __update_positions(mut self, event: Event) -> None:
-        for ref pos in self.positions.values():
-            if case .Some(price) = event.get_price(pos.asset):
-                pos.mkt_price = price
-      
-
+ 
     def __has_expired(self, ticket: OrderTicket, time: Timestamp) -> Bool:
         match ticket.order.tif:
             case TIF.GTC:
@@ -138,10 +136,13 @@ struct SimBroker(Broker):
     
     def sync(mut self, event: Event) -> Account:
         try:
+            # process the open orders
             var trades = self.__process_orders(event)
 
             # update the market price of the positions based on the latest prices from the event
-            self.__update_positions(event)
+            for ref pos in self.positions.values():
+                if case .Some(price) = event.get_price(pos.asset):
+                    pos.mkt_price = price
 
             var bp = self.cash.convert_to(self.base_currency, event.time)
 

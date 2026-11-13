@@ -76,7 +76,7 @@ struct ModifyOrder(Copyable, Writable):
     var id: String
 
 @fieldwise_init
-struct Order(Copyable, Writable):
+struct Order(Copyable & Writable):
     var variant : Variant[NewOrder, CancelOrder, ModifyOrder]
 
     @staticmethod
@@ -110,7 +110,6 @@ struct OrderTicket(Equatable & Hashable & Copyable):
         self.time = None
         self.order = order^
 
-    
     def is_buy(self) -> Bool:
         """
         True if this is a BUY order, False otherwise.

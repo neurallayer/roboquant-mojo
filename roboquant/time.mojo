@@ -337,14 +337,15 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def __iadd__(mut self, other_ns: Int):
         self.nanoseconds += other_ns
 
-    def same_day(self,other: Timestamp, offset_seconds:Int = 0) -> Bool:
-        """Check if two timestamps are on the same day given a timezone."""
-        var dt1 = self + offset_seconds * 1_000_000_000
-        var dt2 = other + offset_seconds * 1_000_000_000
+    def same_day(self,other: Timestamp, offset_minutes:Int = 0) -> Bool:
+        """Check if two timestamps are on the same day given the offset."""
+        var dt1 = self + offset_minutes * 60_000_000_000 
+        var dt2 = other + offset_minutes * 60_000_000_000
         return dt1.to_datetime().same_day(dt2.to_datetime())
 
 
     def to_unix_timestamp(self) -> Float64:
+        """Convert to a unix timestamp, so the numbers of seconds as a float."""
         return Float64(self.nanoseconds)/1_000_000_000.0 
 
     @staticmethod

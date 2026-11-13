@@ -9,7 +9,9 @@
         "ohlcv",
         "pyplot",
         "randn",
-        "rmatmul"
+        "rjust",
+        "rmatmul",
+        "stooq"
     ],
     "mojo.lsp.includeDirs": [
         "lib"

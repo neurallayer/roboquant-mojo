@@ -104,6 +104,14 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
         ref asset = self.data.ptr()[]
         var value = Float64(asset.contract_size) * Float64(size) * price
         return Amount(asset.currency, value)
+    
+    def write_to(self, mut writer: Some[Writer]):
+        match self.type():
+            case AssetType.STOCK: writer.write("Stock:")
+            case AssetType.OPTION: writer.write("Option:")
+            case AssetType.FOREX: writer.write("Forex:")
+            case AssetType.CRYPTO: writer.write("Crypto:")
+        writer.write(self.symbol().value,":",self.currency().code)
 
 
 

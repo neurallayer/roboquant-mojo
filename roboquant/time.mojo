@@ -170,7 +170,7 @@ def _pad_zero[I: Intable](value: I, width: Int) -> String:
     """Format `value` with leading zeros up to `width` characters."""
    return String(Int(value)).ascii_rjust(width, "0")
 
-@fieldwise_init
+
 struct UTCDateTime(Copyable, Movable, Writable):
     var year: Int
     var month: Int
@@ -179,6 +179,25 @@ struct UTCDateTime(Copyable, Movable, Writable):
     var minute: Int
     var second: Int
     var nanosecond: Int
+
+    def __init__(
+        out self,
+        year: Int,
+        month: Int,
+        day: Int,
+        hour: Int = 0,
+        minute: Int = 0,
+        second: Int = 0,
+        nanosecond: Int = 0,
+    ):
+        """Create a UTC datetime, time of day defaults to midnight."""
+        self.year = year
+        self.month = month
+        self.day = day
+        self.hour = hour
+        self.minute = minute
+        self.second = second
+        self.nanosecond = nanosecond
 
     @staticmethod
     def now() -> Self:

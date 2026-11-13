@@ -26,8 +26,10 @@ trait Broker:
         """"Sync the broker and return the updated account."""
         ...
 
+
 struct SimBroker(Broker):
-    """A simulated broker that tracks positions and a virtual cash wallet while placing orders."""
+    """A simulated broker that tracks positions and a virtual cash wallet
+    while simulating a market place."""
 
     var orders: List[OrderTicket]
     var positions: Dict[Asset, Position]
@@ -37,14 +39,14 @@ struct SimBroker(Broker):
     var tz_offset_seconds: Int
     var fee_pct: Float64
 
-    def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), tz_offset_seconds: Int = 0):
+    def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), tz_offset_seconds: Int = 0, fee_pct: Float64 = 0.0):
         self.orders = []
         self.positions = {}
         self.cash = Wallet(deposit)
         self.base_currency = deposit.currency
         self.order_id = 0
         self.tz_offset_seconds = tz_offset_seconds
-        self.fee_pct = 0.0
+        self.fee_pct = fee_pct
 
     def place_orders(mut self, orders: List[Order]) -> None:
         for order in orders:

@@ -1,6 +1,7 @@
 from .asset import Asset
-from .time import Timestamp, Timeframe, TimeSeries
+from .time import Timestamp, Timeframe, TimeSeries, UTCDateTime
 from .order import Size
+from .money import Currency
 
 from std.utils import Variant
 from std.random import random_float64, randn_float64, seed, random_ui64, shuffle
@@ -9,6 +10,9 @@ from std.collections import Set
 from std.os import listdir
 from mojo_csv import CsvReader
 from std.pathlib import Path
+from std.logger import Logger
+
+comptime logger = Logger()
 
 @fieldwise_init
 struct Candle(Copyable):
@@ -17,6 +21,23 @@ struct Candle(Copyable):
     var low: Float64
     var close: Float64
     var volume: Float64
+
+
+    def __init__(
+        out self,
+        open: String,
+        high: String,
+        low: String,
+        close: String,
+        volume: String,
+    ) raises:
+        """Create a Candle from string values (e.g. parsed from a CSV file)."""
+        self.open = Float64(open)
+        self.high = Float64(high)
+        self.low = Float64(low)
+        self.close = Float64(close)
+        self.volume = Float64(volume)
+
 
     def to_array(self) -> Array[Float64, 5]:
         return [self.open, self.high, self.low, self.close, self.volume]
@@ -28,6 +49,9 @@ struct Candle(Copyable):
             case "LOW": return self.low
             case _: return self.close
 
+    def get_volume(self, type: String = "DEFAULT") -> Float64:
+        return self.volume
+
 @fieldwise_init
 struct TradePrice(Copyable):
     var price: Float64
@@ -35,6 +59,9 @@ struct TradePrice(Copyable):
 
     def get_price(self, type: String = "DEFAULT") -> Float64:
         return self.price
+
+    def get_volume(self, type: String = "DEFAULT") -> Float64:
+        return self.volume
 
 
 @fieldwise_init
@@ -49,6 +76,12 @@ struct Quote(Copyable):
             case "ASK": return self.ask_price
             case "BID": return self.bid_price
             case _: return (self.ask_price + self.bid_price) / 2
+
+    def get_volume(self, type: String = "DEFAULT") -> Float64:
+        match type:
+            case "ASK": return self.ask_volume
+            case "BID": return self.bid_volume
+            case _: return self.ask_volume + self.bid_volume
 
 struct OrderBookEntry(Copyable):
     var price: Float64
@@ -73,34 +106,47 @@ struct PriceItem(Copyable):
             return self.item[Quote].get_price(type)
         else:
             return self.item[TradePrice].get_price(type)
+
+    def get_volume(self, type: String = "DEFAULT") -> Float64:
+        if self.item.isa[Candle]():
+            return self.item[Candle].get_volume(type)
+        elif self.item.isa[Quote]():
+            return self.item[Quote].get_volume(type)
+        else:
+            return self.item[TradePrice].get_volume(type)
       
     def isa[T:AnyType](self) -> Bool:
         return self.item.isa[T]()
 
 
 @fieldwise_init
-struct Event(Sized, Copyable):
+struct Event(Sized, Copyable, Comparable):
     var time: Timestamp
     var items: Dict[Asset, PriceItem]
 
     def __len__(self) -> Int:
         return len(self.items)
 
-    def get_price(self, asset: Asset, type: String) -> Optional[Float64]:
+    def get_price(self, asset: Asset, type: String = "DEFAULT") -> Optional[Float64]:
         try: 
             ref item = self.items[asset]
             return item.get_price(type)
         except:
             return None
-
-    def get_price(self, asset: Asset) -> Optional[Float64]:
-        try: 
+ 
+    def get_volume(self, asset: Asset, type: String = "DEFAULT") -> Optional[Float64]:
+        try:
             ref item = self.items[asset]
-            return item.get_price()
+            return item.get_volume(type)
         except:
             return None
+    
+
+    def __lt__(self, other: Event) -> Bool:
+        return self.time < other.time
 
 
+  
 
 @fieldwise_init
 struct HistoricFeed:
@@ -191,26 +237,44 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
     return HistoricFeed(events^)
 
 
-def parse_csv_file(filename: String):
+def __parse_stooq_file(filename: String) -> List[Tuple[Timestamp, PriceItem]]:
+    var result = List[Tuple[Timestamp, PriceItem]]()
     try:
         var csv_path = Path(filename)
         var reader = CsvReader(csv_path)
-        print(len(reader)) # total element count
+        var first = True
         for row in reader:
-            print(row[0])
-    except:
-        print("Error")
+            try:
+                if first:
+                    first = False
+                    continue
+                var candle = Candle(row[4],row[5],row[6],row[7],row[8])
+                var date = row[2]
+                var dt = UTCDateTime(Int(date[codepoint=0:4]),Int(date[codepoint=4:6]),Int(date[codepoint=6:8]))
+                var ts = dt.timestamp()
+                result.append((ts, PriceItem(candle^)))
+            except e:
+                logger.warning(String(e))   
+    except e:
+        logger.warning(String(e)) 
+    return result^
 
 
-def csv_feed(dir_path: String) raises -> HistoricFeed:
-    var events = Dict[Timestamp, Dict[Asset, PriceItem]]()
+def csv_feed(dir_path: String, extension: String = ".csv", currency: Currency = Currency.USD) raises -> HistoricFeed:
+    var data = Dict[Timestamp, Dict[Asset, PriceItem]]()
     var all_entries = listdir(dir_path)
-    var csv_files = List[String]()
     
     for entry in all_entries:
-        if entry.endswith(".csv"):
-            parse_csv_file(entry)
+        if entry.endswith(extension):
+            var symbol = entry.split(".")[0].upper()
+            var asset = Asset.Stock(symbol, currency)
+            var prices = __parse_stooq_file(dir_path + "/" + entry)
+            for ts, item in prices:
+                if ts in data:
+                    data[ts][asset] = item.copy()
+                else:
+                    data[ts] = {asset:item.copy()}
 
-    var result = [Event(elem.key,elem.value.copy()) for elem in events.items()]
-    return HistoricFeed(result^)
-
+    var events = [Event(elem.key,elem.value.copy()) for elem in data.items()]
+    sort(events)
+    return HistoricFeed(events^)

@@ -13,7 +13,6 @@ comptime TIME_MIN = Timestamp(-2208988800000000000) # 1900-01-01
 comptime TIME_MAX = Timestamp(4102444800000000000) # 2100-01-01
 
 
-
 struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
     """
     Represents a time interval with a start and end timestamp, and an optional inclusive flag.

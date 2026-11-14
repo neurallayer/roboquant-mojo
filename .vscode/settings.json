@@ -4,6 +4,7 @@
         "elif",
         "Forex",
         "iadd",
+        "isub",
         "mojoc",
         "numpy",
         "ohlcv",

@@ -3,14 +3,17 @@ from .time import Timestamp, Timeframe, TimeSeries, UTCDateTime
 from .order import Size
 from .money import Currency
 
-from std.utils import Variant
+from std.utils import Variant, BlockingSpinLock
 from std.random import random_float64, randn_float64, seed, random_ui64, shuffle
 from std.os import abort
 from std.collections import Set
 from std.os import listdir
-from mojo_csv import CsvReader
 from std.pathlib import Path
 from std.logger import Logger
+from max.algorithm import parallelize, sync_parallelize
+from std.memory import ArcPointer
+
+
 
 comptime logger = Logger()
 
@@ -25,11 +28,11 @@ struct Candle(Copyable):
 
     def __init__(
         out self,
-        open: String,
-        high: String,
-        low: String,
-        close: String,
-        volume: String,
+        open: StringSpan,
+        high: StringSpan,
+        low: StringSpan,
+        close: StringSpan,
+        volume: StringSpan,
     ) raises:
         """Create a Candle from string values (e.g. parsed from a CSV file)."""
         self.open = Float64(open)
@@ -81,7 +84,8 @@ struct Quote(Copyable):
         match type:
             case "ASK": return self.ask_volume
             case "BID": return self.bid_volume
-            case _: return self.ask_volume + self.bid_volume
+            case "AVG": return (self.ask_volume + self.bid_volume)/2
+            case _: return min(self.ask_volume, self.bid_volume)
 
 struct OrderBookEntry(Copyable):
     var price: Float64
@@ -141,7 +145,6 @@ struct Event(Sized, Copyable, Comparable):
         except:
             return None
     
-
     def __lt__(self, other: Event) -> Bool:
         return self.time < other.time
 
@@ -240,14 +243,13 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
 def __parse_stooq_file(filename: String) -> List[Tuple[Timestamp, PriceItem]]:
     var result = List[Tuple[Timestamp, PriceItem]]()
     try:
-        var csv_path = Path(filename)
-        var reader = CsvReader(csv_path)
-        var first = True
-        for row in reader:
+        var file = open(filename, "r")
+        var lines = file.read().split("\n")[1:]
+        for line in lines:
+            var row = line.strip().split(",")
+            if len(row) < 8:
+                continue
             try:
-                if first:
-                    first = False
-                    continue
                 var candle = Candle(row[4],row[5],row[6],row[7],row[8])
                 var date = row[2]
                 var dt = UTCDateTime(Int(date[codepoint=0:4]),Int(date[codepoint=4:6]),Int(date[codepoint=6:8]))
@@ -274,6 +276,60 @@ def csv_feed(dir_path: String, extension: String = ".csv", currency: Currency = 
                     data[ts][asset] = item.copy()
                 else:
                     data[ts] = {asset:item.copy()}
+
+    var events = [Event(elem.key,elem.value.copy()) for elem in data.items()]
+    sort(events)
+    return HistoricFeed(events^)
+
+@fieldwise_init
+struct CSVResult(Copyable):
+    var filename: String
+    var prices: List[Tuple[Timestamp, PriceItem]]
+
+def csv_feed_parallel(dir_path: String, extension: String = ".csv", currency: Currency = Currency.USD) raises -> HistoricFeed:
+    var data = Dict[Timestamp, Dict[Asset, PriceItem]]()
+    var file_entries = listdir(dir_path)
+    var all_entries = [dir_path + "/" + entry for entry in file_entries if entry.endswith(extension)]
+    var all_result = List[CSVResult](capacity=len(all_entries))
+    var lock = BlockingSpinLock()
+
+    def __parse(idx:Int) {all_entries, mut all_result, mut lock}:
+        var result = List[Tuple[Timestamp, PriceItem]]()
+        var filename = all_entries[idx]
+
+        try:
+            var file = open(filename, "r")
+            var lines = file.read().split("\n")[1:]
+            for line in lines:
+                var row = line.strip().split(",")
+                if len(row) < 8:
+                    continue
+                try:
+                    var candle = Candle(row[4],row[5],row[6],row[7],row[8])
+                    var date = row[2]
+                    var dt = UTCDateTime(Int(date[codepoint=0:4]),Int(date[codepoint=4:6]),Int(date[codepoint=6:8]))
+                    var ts = dt.timestamp()
+                    result.append((ts, PriceItem(candle^)))
+                except e:
+                    logger.warning(String(e))   
+        except e:
+            logger.warning(String(e))
+
+        lock.lock(idx)
+        all_result.append(CSVResult(filename,result^))
+        if not lock.unlock(idx):
+            logger.warning("failed to unlock")
+    
+    sync_parallelize(__parse, len(all_entries))
+
+    for result in all_result:
+        var symbol = result.filename.split(".")[0].upper()
+        var asset = Asset.Stock(symbol, currency)
+        for time, price_item in result.prices:
+            if time in data:
+                data[time][asset] = price_item.copy()
+            else:
+                data[time] = {asset: price_item.copy()}
 
     var events = [Event(elem.key,elem.value.copy()) for elem in data.items()]
     sort(events)

@@ -35,12 +35,17 @@ struct FlexTrader(Trader):
 
     Attributes:
         order_amount: The fixed amount to be used for calculating the order size.
+        step_size: The rounding to se for order sizes, default "1" is no fractional orders.
     """
 
     var order_amount: Amount
+    var max_position: Amount
+    var step_size: String
 
-    def __init__(out self, order_amount: Amount = Amount("USD", 5_000)):
+    def __init__(out self, order_amount: Amount = Amount("USD", 5_000), step_size: String = "1"):
         self.order_amount = order_amount
+        self.step_size = step_size
+        self.max_position = order_amount * 10
 
     def create_orders(mut self, signals: List[Signal], account: Account, event: Event) -> List[Order]:
         """Create market orders for signals using the account's current state.
@@ -53,34 +58,44 @@ struct FlexTrader(Trader):
             return []
         var orders: List[Order] = []
         var buying_power = account.buying_power.value
+        var time = event.time
         for signal in signals:
-            var position_size = account.get_position_size(signal.asset)
-            var size = Size.zero()
-            if position_size.is_zero() and signal.is_sell():
-                continue
-            elif position_size.is_positive() and signal.is_sell():
-                size = - position_size
-            else:
-                if case .Some(price) = event.get_price(signal.asset):
-                    size = self.get_order_size(signal, price, event.time, "1")
-                    buying_power -= signal.asset.value(size, price).value
-                    if buying_power < 0:
-                        continue
+            try:
+                ref asset = signal.asset
+                var position_size = account.get_position_size(asset)
+                var size = Size.zero()
+                if position_size.is_zero() and signal.is_sell():
+                    # For now no shorting
+                    continue
+                elif position_size.is_positive() and signal.is_sell():
+                    size = - position_size
+                else:
+                    # open or increase position sizes
+                    if case .Some(price) = event.get_price(signal.asset):
+                        var position_amt = account.get_position_value(signal.asset, price)
+                        position_amt = position_amt.convert_to(self.max_position, time)
+                        if position_amt.value < self.max_position.value:
+                            size = self.get_order_size(signal, price, time)
+                            buying_power -= signal.asset.value(size, price).value
+                            if buying_power < 0:
+                                continue
 
-            if not size.is_zero():
-                var order = Order.market_order(signal.asset, size)
-                orders.append(order^)
+                if not size.is_zero():
+                    var order = Order.market_order(asset, size)
+                    orders.append(order^)
+            except e:
+                logger.warning("couldn't process signal")
 
         return orders^
 
-    def get_order_size(self, signal: Signal, price: Float64, time: Timestamp , step_size: String) -> Size:
+    def get_order_size(self, signal: Signal, price: Float64, time: Timestamp) -> Size:
         """Calculate the order size based on the signal rating, asset price, order amount.
         Time is used when a conversion is needed between the asset currency and the order amount currency.
         """
         try:
             var one_contract_value = signal.asset.value(Size.one(), price).convert_to(self.order_amount.currency, time)
             var size = signal.rating * self.order_amount.value / one_contract_value.value
-            return round_number(size, step_size)
+            return round_number(size, self.step_size)
         except e:
             # typically we get here if conversion failed.
             logger.warning(String(e))

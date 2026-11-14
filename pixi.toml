@@ -5,10 +5,11 @@ platforms = ["osx-arm64"]
 version = "0.2.0"
 
 [tasks]
-build = "pixi run mojo precompile -I lib roboquant/ -o lib/roboquant.mojoc"
-demo = { cmd = "pixi run mojo -I lib tests/demo_chart.mojo", depends-on = ["build"]}
-perf = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["build"]}
-test = { cmd = "./tests/run_tests.sh", depends-on = ["build"]}
+precompile = "pixi run mojo precompile -I lib roboquant/ -o lib/roboquant.mojoc"
+demo = { cmd = "pixi run mojo -I lib tests/demo_chart.mojo", depends-on = ["precompile"]}
+perf = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["precompile"]}
+perf2 = { cmd = "pixi run mojo -I lib tests/test_csv.mojo", depends-on = ["precompile"]}
+test = { cmd = "./tests/run_tests.sh", depends-on = ["precompile"]}
 
 
 [dependencies]
@@ -17,5 +18,6 @@ decimo = ">=0.16.0,<0.17"
 python = "==3.14"
 matplotlib = ">=3.11.2,<4"
 numpy = ">=2.5.3,<3"
-mojo_csv = ">=1.8.1,<2"
+max = ">=26.7.0,<27"
+
 

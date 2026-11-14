@@ -121,8 +121,15 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
         var result = _CONVERTER.convert(self, currency, time)
         return result
 
+    def convert_to(self, amt: Amount, time: Timestamp) raises -> Self:
+        """Convert to the same currency as the provided amount."""
+        return self.convert_to(amt.currency, time)
+
     def __add__(self, other: Amount) -> Wallet:
         return Wallet(self, other)
+
+    def __mul__(self, other: Float64) -> Amount:
+        return Amount(self.currency, self.value * other)
 
     def __lt__(self, other: Float64) -> Bool:
         return self.value < other

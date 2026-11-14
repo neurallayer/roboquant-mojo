@@ -123,6 +123,16 @@ struct Account(Writable, Copyable):
         except:
             abort("Couldn't calculate position size")
 
+    def get_position_value(self, asset: Asset, price: Float64) -> Amount:
+        """Return the netting position value for an asset.
+
+        Args:
+            asset: The asset for which to calculate the netting value.
+            price: The price to use.
+        """
+        return asset.value(self.get_position_size(asset), price)
+
+
     def unrealized_pnl(self) -> Wallet:
         """The unrealized Profit & Loss by open positions."""
         var result = Wallet()

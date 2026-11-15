@@ -2,7 +2,7 @@ from .strategy import Signal
 from .account import Account
 from .order import Order, Size, NewOrder
 from .feed import Event
-from .money import Amount
+from .money import Amount, Converter
 from .time import Timestamp
 from decimo import RoundingMode, ROUND_DOWN
 from std.os import abort
@@ -41,11 +41,13 @@ struct FlexTrader(Trader):
     var order_amount: Amount
     var max_position: Amount
     var step_size: String
+    var converter: Converter
 
-    def __init__(out self, order_amount: Amount = Amount("USD", 5_000), step_size: String = "1"):
+    def __init__(out self, order_amount: Amount = Amount("USD", 5_000), step_size: String = "1", currency_converter: Converter = Converter()):
         self.order_amount = order_amount
         self.step_size = step_size
         self.max_position = order_amount * 10
+        self.converter = currency_converter
 
     def create_orders(mut self, signals: List[Signal], account: Account, event: Event) -> List[Order]:
         """Create market orders for signals using the account's current state.
@@ -73,7 +75,7 @@ struct FlexTrader(Trader):
                     # open or increase position sizes
                     if case .Some(price) = event.get_price(signal.asset):
                         var position_amt = account.get_position_value(signal.asset, price)
-                        position_amt = position_amt.convert_to(self.max_position, time)
+                        position_amt = self.converter.convert(position_amt, self.max_position.currency, time)
                         if position_amt.value < self.max_position.value:
                             size = self.get_order_size(signal, price, time)
                             buying_power -= signal.asset.value(size, price).value
@@ -93,7 +95,8 @@ struct FlexTrader(Trader):
         Time is used when a conversion is needed between the asset currency and the order amount currency.
         """
         try:
-            var one_contract_value = signal.asset.value(Size.one(), price).convert_to(self.order_amount.currency, time)
+            var one_contract_value = signal.asset.value(Size.one(), price)
+            one_contract_value = self.converter.convert(one_contract_value, self.order_amount.currency, time)
             var size = signal.rating * self.order_amount.value / one_contract_value.value
             return round_number(size, self.step_size)
         except e:

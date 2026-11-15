@@ -3,7 +3,7 @@ from .time import Timestamp, Timeframe, TimeSeries, UTCDateTime
 from .order import Size
 from .money import Currency
 
-from std.utils import Variant, BlockingSpinLock
+from std.utils import Variant, BlockingScopedLock, BlockingSpinLock
 from std.random import random_float64, randn_float64, seed, random_ui64, shuffle
 from std.os import abort
 from std.collections import Set
@@ -287,6 +287,8 @@ struct CSVResult(Copyable):
     var prices: List[Tuple[Timestamp, PriceItem]]
 
 def csv_feed_parallel(dir_path: String, extension: String = ".csv", currency: Currency = Currency.USD) raises -> HistoricFeed:
+    """Parse the CSV files in paralell."""
+
     var data = Dict[Timestamp, Dict[Asset, PriceItem]]()
     var file_entries = listdir(dir_path)
     var all_entries = [dir_path + "/" + entry for entry in file_entries if entry.endswith(extension)]
@@ -315,11 +317,10 @@ def csv_feed_parallel(dir_path: String, extension: String = ".csv", currency: Cu
         except e:
             logger.warning(String(e))
 
-        lock.lock(idx)
-        all_result.append(CSVResult(filename,result^))
-        if not lock.unlock(idx):
-            logger.warning("failed to unlock")
-    
+        with BlockingScopedLock(lock):
+            all_result.append(CSVResult(filename,result^))
+       
+    # parse all files and wait for all to be done.
     sync_parallelize(__parse, len(all_entries))
 
     for result in all_result:

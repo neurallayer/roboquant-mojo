@@ -1,5 +1,6 @@
 from .time import Timestamp, TIME_MIN
 from std.os import abort
+from std.memory import ArcPointer
 
 comptime USD = Currency.USD
 comptime EUR = Currency.EUR
@@ -8,7 +9,6 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     """
     Currency represents a specific currency used in financial transactions.
     It is uniquely identified by its code, which is a string representing the currency's code (e.g., "USD" for US Dollar, "EUR" for Euro).
-    The Currency struct provides methods for comparison, hashing, and writing to output streams.
     """
 
     comptime USD = Self("USD")
@@ -43,27 +43,57 @@ struct ExchangeRate(ImplicitlyCopyable, TrivialRegisterPassable):
     var rate: Float64
 
 
-@fieldwise_init
-struct Converter(ImplicitlyCopyable):
+trait CurrencyConverter():
+
+    def convert(self, wallet: Wallet, to_currency: Currency, time: Timestamp) raises -> Amount:
+        """Convert a wallet to a single amount."""
+        var sum = 0.0
+        for amount in wallet.amounts():
+            sum += self.convert_float(amount, to_currency, time)
+        return Amount(to_currency, sum)
+
+    def convert(self, amount: Amount, to_currency: Currency, time: Timestamp) raises -> Amount:
+        """Convert an amount into another amount."""
+        return Amount(to_currency, self.convert_float(amount, to_currency, time))
+
+
+    def convert_float(self, amount: Amount, to_currency: Currency, time: Timestamp) raises -> Float64:
+        """Convert the monetary amount into another currency at the provided time.
+        """
+        ...
+
+
+struct NoConverter(CurrencyConverter):
+    """Doesn't convert between different currencies."""
+
+    def convert_float(self, amount: Amount, to_currency: Currency, time: Timestamp) raises -> Float64:
+        if amount.currency == to_currency:
+            return amount.value
+        if amount.value == 0:
+            return 0.0
+
+        raise("No conversion possible")
+
+
+struct Converter(CurrencyConverter, ImplicitlyCopyable):
     """
     A Converter is responsible for converting monetary amounts between different currencies
     based on historical exchange rates. It maintains a dictionary of exchange rates for different currencies
     and provides methods to convert amounts at specific timestamps.
 
-    It assumes all the rates are to a single currency. 
+    It assumes all the rates can be mapped to a single currency. 
     """
 
-    var _rates: Dict[Currency, List[ExchangeRate]]
+    var _rates: ArcPointer[Dict[Currency, List[ExchangeRate]]]
+
+    def __init__(out self, var rates: Dict[Currency, List[ExchangeRate]]):
+        self._rates = ArcPointer(rates^)
 
     def __init__(out self):
-        self._rates = {}
-        self._rates[Currency.USD] = [ExchangeRate(TIME_MIN, 1.1)]
-        self._rates[Currency.EUR] = [ExchangeRate(TIME_MIN, 1.0)]
-        self._rates[Currency.GBP] = [ExchangeRate(TIME_MIN, 0.9)]
-
+        self._rates = ArcPointer(Dict[Currency, List[ExchangeRate]]())
 
     @staticmethod
-    def bisect_left(arr: List[ExchangeRate], x: Timestamp) -> Int:
+    def __bisect_left(arr: List[ExchangeRate], x: Timestamp) -> Int:
         var lo = 0
         var hi = len(arr)
         while lo < hi:
@@ -79,18 +109,19 @@ struct Converter(ImplicitlyCopyable):
         self._rates = copy._rates.copy()
 
     def _get_rate(self, currency: Currency, time: Timestamp) raises -> Float64:
-        ref rates = self._rates[currency]
-        var idx = Self.bisect_left(rates, time) # type: ignore
+        ref rates = self._rates[][currency]
+        var idx = Self.__bisect_left(rates, time) # type: ignore
         idx = min(idx, len(rates) - 1)
         return rates[idx].rate
 
-    def convert(self, amount: Amount, to_currency: Currency, time: Timestamp) raises -> Amount:
+    def convert_float(self, amount: Amount, to_currency: Currency, time: Timestamp) raises -> Float64:
         """Convert the monetary amount into another currency at the provided time.
         """
+        if amount.currency == to_currency:
+            return amount.value
         var value = amount.value * self._get_rate(to_currency, time) / self._get_rate(amount.currency, time)
-        return Amount(to_currency, value)
-    
-comptime _CONVERTER = Converter()
+        return value
+
 
 @fieldwise_init
 struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
@@ -111,19 +142,6 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
 
     def write_to(self, mut writer: Some[Writer]):
         writer.write(self.value, "@", self.currency)
-
-    def convert_to(self, currency: Currency, time: Timestamp) raises -> Self:
-        if self.currency == currency:
-            return self.copy()
-        if self.value == 0:
-            return Self(currency, 0.0)
-
-        var result = _CONVERTER.convert(self, currency, time)
-        return result
-
-    def convert_to(self, amt: Amount, time: Timestamp) raises -> Self:
-        """Convert to the same currency as the provided amount."""
-        return self.convert_to(amt.currency, time)
 
     def __add__(self, other: Amount) -> Wallet:
         return Wallet(self, other)
@@ -219,15 +237,3 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
     def __len__(self) -> Int:
         return len(self.balances)
 
-    def convert_to(self, currency: Currency, time: Timestamp) raises -> Amount:
-        if len(self) == 0:
-            return Amount(currency, 0.0)
-
-        # Optimized path for single currency 
-        if len(self) == 1 and currency in self.balances:
-            return Amount(currency, self.balances[currency])
-
-        var total = 0.0
-        for amount in self.amounts():
-            total += amount.convert_to(currency, time).value
-        return Amount(currency, total)

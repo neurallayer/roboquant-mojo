@@ -4,7 +4,7 @@ from .asset import Asset
 from .order import Order, Size, OrderTicket
 from std.os import abort
 
-
+@always_inline
 def sum[T:Deinitable, //, f: def(T) thin -> Amount](list: List[T]) -> Wallet:
     var result = Wallet()
     for elem in list:

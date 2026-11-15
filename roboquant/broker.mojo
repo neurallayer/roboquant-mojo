@@ -1,7 +1,7 @@
 
 from .order import NewOrder, Order, TIF, OrderTicket, Size
 from .account import Account, Position, Trade
-from .money import Wallet, Amount, Currency
+from .money import Wallet, Amount, Currency, Converter
 from .asset import Asset
 from .feed import Event
 from .time import Timestamp
@@ -38,8 +38,9 @@ struct SimBroker(Broker):
     var order_id: Int
     var tz_offset_seconds: Int
     var fee_pct: Float64
+    var converter: Converter
 
-    def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), tz_offset_seconds: Int = 0, fee_pct: Float64 = 0.0):
+    def __init__(out self, deposit: Amount = Amount(Currency.USD, 100_000), tz_offset_seconds: Int = 0, fee_pct: Float64 = 0.0, currency_converter: Converter = Converter()):
         self.orders = []
         self.positions = {}
         self.cash = Wallet(deposit)
@@ -47,6 +48,7 @@ struct SimBroker(Broker):
         self.order_id = 0
         self.tz_offset_seconds = tz_offset_seconds
         self.fee_pct = fee_pct
+        self.converter = currency_converter
 
     def place_orders(mut self, orders: List[Order]) -> None:
         for order in orders:
@@ -146,7 +148,7 @@ struct SimBroker(Broker):
                 if case .Some(price) = event.get_price(pos.asset):
                     pos.mkt_price = price
 
-            var bp = self.cash.convert_to(self.base_currency, event.time)
+            var bp =  self.converter.convert(self.cash, self.base_currency, event.time)
 
             return Account(
                 last_update = event.time,

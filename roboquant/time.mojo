@@ -7,7 +7,6 @@ from std.time import time
 
 comptime logger = Logger()
 
-# Time since unix epoch in ns
 comptime Timeline = List[Timestamp]
 comptime TIME_MIN = Timestamp(-2208988800000000000) # 1900-01-01
 comptime TIME_MAX = Timestamp(4102444800000000000) # 2100-01-01
@@ -19,10 +18,11 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
     The Timeframe struct provides methods to check if a timestamp is within the interval,
     split the interval into smaller intervals, and format the interval for display.
 
-    Attributes:
+    Attrs:
         start: The starting timestamp of the interval.
         end: The ending timestamp of the interval.
-        inclusive: A flag indicating whether the end timestamp is inclusive.
+        inclusive: A flag indicating whether the end timestamp is inclusive. The start time
+            is always inclusive. 
     """
 
     comptime EMPTY = Timeframe(TIME_MIN, TIME_MIN, False)
@@ -113,11 +113,13 @@ struct TimeSeries(Copyable, Writable):
     def univariate(name: String, data: List[Tuple[Timestamp, Float64]]) -> Self:
         """
         Create a univariate TimeSeries, so only a single variable.
+
         Args:
-            name (String): The name of the variable.
-            data (List[Float64]): A list of Tuple[Timestamp, Float64] values corresponding to each timestamp in the series.
+            name: The name of the variable.
+            data: A list of Tuple[Timestamp, Float64] values corresponding to each timestamp in the series.
+
         Returns:
-            TimeSeries: A univariate TimeSeries instance.
+            A univariate TimeSeries instance.
         """
         var values_dict: Dict[String, List[Float64]] = {name: [v for (_, v) in data]}
         return Self([t for (t, _) in data], values_dict^)  
@@ -171,6 +173,8 @@ def _pad_zero[I: Intable](value: I, width: Int) -> String:
 
 
 struct UTCDateTime(Copyable, Movable, Writable):
+    """Basic data-time object that assumes verything is in UTC timezone."""
+
     var year: Int
     var month: Int
     var day: Int
@@ -292,6 +296,9 @@ def _parse_iso_timestamp(s: String) raises -> Timestamp:
 
 
 struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equatable, Writable, Hashable):
+    """A point in time tracked as the number of NANOSECONDS since the epoch (1 Jan 1970 UTC).
+    It supports dates before the epoch with a negative value for the number of nanoseconds.
+    """
 
     var nanoseconds: Int
 
@@ -383,7 +390,7 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
 
 
     def to_datetime(self) -> UTCDateTime:
-        """Convert Unix timestamp in NANOSECONDS since epoch to UTC datetime."""
+        """Convert this timestamp to UTC datetime."""
         # Floor division gives correct behavior for negative (pre-1970) timestamps
         var total_ns = self.nanoseconds
         var total_seconds = total_ns // 1_000_000_000

@@ -2,7 +2,7 @@ from .account import Account, Trade
 from .feed import Event
 from .strategy import Signal
 from .order import Order
-from .money import Wallet
+from .money import Wallet, Converter
 from std.time import perf_counter
 from .time import Timestamp, TimeSeries
 from std.logger import Logger
@@ -20,16 +20,17 @@ trait Journal:
         ...
 
 
-@fieldwise_init
-struct EquityTracker(Journal, Writable, Defaultable):
+struct EquityTracker(Journal, Writable):
     """Tracks the equity of the account over time."""
 
     var equity: List[Float64]
     var times: List[Timestamp]
+    var converter: Converter
     
-    def __init__(out self):
+    def __init__(out self, currency_converter: Converter = Converter()):
         self.equity = []
         self.times = []
+        self.converter = currency_converter
 
     def get_performance(self) -> Float64:
         """
@@ -43,7 +44,7 @@ struct EquityTracker(Journal, Writable, Defaultable):
     def track(mut self, account: Account, event: Event, signals: List[Signal], orders: List[Order]) -> None:
         try:
             var w = account.equity()
-            var amt = w.convert_to(account.base_currency(), event.time)
+            var amt = self.converter.convert(w, account.base_currency(), event.time)
             self.equity.append(amt.value)
             self.times.append(event.time)
         except e:

@@ -54,7 +54,6 @@ struct __AssetData(ImplicitlyCopyable, Writable, Equatable, Hashable):
         return self.symbol != other.symbol
 
 
-
 @fieldwise_init
 struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
     """

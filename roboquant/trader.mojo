@@ -36,6 +36,8 @@ struct FlexTrader(Trader):
     Attributes:
         order_amount: The fixed amount to be used for calculating the order size.
         step_size: The rounding to se for order sizes, default "1" is no fractional orders.
+        max_position: The maximum value a position should take
+        converter: the currency converter to use, default is no conversion
     """
 
     var order_amount: Amount

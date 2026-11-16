@@ -1,6 +1,11 @@
 from .time import Timestamp, TIME_MIN
-from std.os import abort
+from std.os import abort, stat, mkdir
+from std.os.path import exists, expanduser, join
 from std.memory import ArcPointer
+from std.python import Python, PythonObject
+from std.logger import Logger
+
+comptime logger = Logger()
 
 comptime USD = Currency.USD
 comptime EUR = Currency.EUR
@@ -121,6 +126,64 @@ struct Converter(CurrencyConverter, ImplicitlyCopyable):
             return amount.value
         var value = amount.value * self._get_rate(to_currency, time) / self._get_rate(amount.currency, time)
         return value
+
+
+def __download_ecb_exchange_rates() -> Bool:
+    var python_code = '''
+import io
+import urllib.request
+import zipfile
+from pathlib import Path
+
+url = "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-hist.zip"
+with urllib.request.urlopen(url, timeout=10) as response:
+    content = response.read()
+with zipfile.ZipFile(io.BytesIO(content)) as z:
+    p = Path.home() / ".roboquant"
+    z.extractall(p)
+    '''
+    var success = Python().eval(code=python_code)
+    return success
+
+def load_ecb_exchange_rates() raises -> Converter:
+    var roboquant_home = expanduser("~/.roboquant")
+    if not exists(roboquant_home):
+        logger.info("Creating roboquant home at ~/.roboquant")
+        mkdir(roboquant_home)
+
+    var filename = join(roboquant_home, "eurofxref-hist.csv")
+    var today = Timestamp.now()
+    if not exists(filename) or not today.same_day(Timestamp(stat(filename).st_birthtimespec.as_nanoseconds())):
+        if not __download_ecb_exchange_rates():
+            logger.warning("failed downloading new ECB rates, trying to process anyway.")
+        
+    var file = open(filename, "r")
+    var lines = file.read().split("\n")
+    var codes = lines[0].strip().removesuffix(",").split(",")[1:]
+    var currencies = [Currency(String(code)) for code in codes]
+    logger.debug(currencies)
+ 
+    var rates = [List[ExchangeRate]() for _ in currencies]
+    var l = len(codes)
+    for line in lines[1:]:
+        var row = line.strip().split(",")
+        if len(row) <= l:
+            continue 
+        var dt = row[0]
+        var time = Timestamp.from_iso(String(dt))
+        for idx in range(l):
+            try:         
+                var rate = Float64(row[idx + 1]) 
+                var exchange_rate = ExchangeRate(time, rate)
+                rates[idx].append(exchange_rate)
+            except:
+                # expected since some rows contain N/A like text
+                pass
+
+    var all_rates = {currencies[idx]:rates[idx].copy() for idx in range(l)}
+    all_rates[Currency.EUR] = [ExchangeRate(TIME_MIN, 1.0)]
+    return Converter(all_rates^)
+
 
 
 @fieldwise_init

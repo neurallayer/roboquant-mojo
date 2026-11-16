@@ -1,5 +1,5 @@
 from std.testing import assert_equal, assert_true, assert_not_equal, assert_almost_equal, TestSuite
-from roboquant.money import Amount, Wallet, USD, EUR, Currency
+from roboquant.money import Amount, Wallet, USD, EUR, Currency, load_ecb_exchange_rates
 from roboquant.time import Timestamp
 
 
@@ -34,6 +34,17 @@ def test_wallet() raises:
     var w2 = 100@EUR + 100@USD
     assert_equal(w2[USD].value, 100)
     assert_equal(w2[EUR].value, 100)
+
+
+def test_ecb() raises:
+    var c = load_ecb_exchange_rates()
+    var now = Timestamp.now()
+    var amt1 = 100@USD
+    assert_equal(amt1, c.convert(amt1, USD, now))
+
+    var t1 = Timestamp.from_iso("2020-01-01")
+    assert_almost_equal(c.convert(amt1, EUR, t1).value, 84.824836712189)
+    
 
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

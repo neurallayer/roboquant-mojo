@@ -1,5 +1,5 @@
 
-from .order import NewOrder, Order, TIF, OrderTicket, Size
+from .order import NewOrder, Order, TIF, OrderTicket, Size, CancelOrder, ModifyOrder
 from .account import Account, Position, Trade
 from .money import Wallet, Amount, Currency, Converter
 from .asset import Asset
@@ -52,11 +52,17 @@ struct SimBroker(Broker):
 
     def place_orders(mut self, orders: List[Order]) -> None:
         for order in orders:
-            if case .Some(new_order) = order.get_new_order():
+            ref variant = order.variant
+
+            if variant.isa[NewOrder]():
                 self.order_id += 1
                 var id = String(self.order_id)
-                self.orders.append(OrderTicket(id, new_order.copy()))
-    
+                self.orders.append(OrderTicket(id, variant[NewOrder].copy()))
+            elif variant.isa[CancelOrder]():
+                pass
+            else:
+                pass
+
  
     def __has_expired(self, ticket: OrderTicket, time: Timestamp) -> Bool:
         match ticket.order.tif:

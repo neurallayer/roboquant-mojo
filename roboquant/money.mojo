@@ -13,7 +13,8 @@ comptime EUR = Currency.EUR
 struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     """
     Currency represents a specific currency used in financial transactions.
-    It is uniquely identified by its code, which is a string representing the currency's code (e.g., "USD" for US Dollar, "EUR" for Euro).
+    It is uniquely identified by its code, which is a string representing the
+    currency's code (e.g., "USD" for US Dollar, "EUR" for Euro).
     """
 
     comptime USD = Self("USD")

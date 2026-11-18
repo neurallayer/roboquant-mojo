@@ -25,7 +25,7 @@ struct Symbol(ImplicitlyCopyable, Writable, Equatable, Hashable):
         self.value = value
 
 @fieldwise_init
-struct __AssetData(ImplicitlyCopyable, Writable, Equatable, Hashable):
+struct __AssetData:
     """
     The Asset struct represents a financial instrument that can be traded in the market.
     It is uniquely identified by only its symbol, which is a string representing the asset's ticker or identifier.
@@ -44,14 +44,6 @@ struct __AssetData(ImplicitlyCopyable, Writable, Equatable, Hashable):
     var type: AssetType
     var contract_size: Size
  
-    def __hash__[T: Hasher](self, mut hasher: T) -> None:
-        self.symbol.__hash__(hasher)
-
-    def __eq__(self, other: Self, /) -> Bool:
-        return self.symbol == other.symbol
-
-    def __ne__(self, other: Self, /) -> Bool:
-        return self.symbol != other.symbol
 
 
 @fieldwise_init
@@ -69,34 +61,46 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
     def Stock(symbol: Symbol, currency: Currency = Currency.USD) -> Asset:
         """Create a new Stock with the provided symbol and currency."""
         var data = __AssetData(symbol, currency, AssetType.STOCK, Size.one())
-        return Asset(ArcPointer(data))
+        return Asset(ArcPointer(data^))
 
     @staticmethod
     def Forex(symbol: Symbol, currency: Currency, contract_size: Size = Size.one()) -> Asset:
         """Create a new Forex with the provided symbol and currency."""
         var data = __AssetData(symbol, currency, AssetType.FOREX, contract_size)
-        return Asset(ArcPointer(data))
+        return Asset(ArcPointer(data^))
 
     @staticmethod
     def Crypto(symbol: Symbol, currency: Currency, contract_size: Size = Size.one()) -> Asset:
         """Create a new Crypto with the provided symbol and currency."""
         var data = __AssetData(symbol, currency, AssetType.FOREX, contract_size)
-        return Asset(ArcPointer(data))
+        return Asset(ArcPointer(data^))
 
     @staticmethod
     def Option(symbol: Symbol, currency: Currency = Currency.USD) -> Asset:
         """Create a new Stock with the provided symbol and currency."""
         var data = __AssetData(symbol, currency, AssetType.OPTION, Size(100))
-        return Asset(ArcPointer(data))
+        return Asset(ArcPointer(data^))
 
+    @always_inline
     def symbol(self) -> Symbol:
         return self.data[].symbol
 
+    @always_inline
     def currency(self) -> Currency:
         return self.data[].currency
 
+    @always_inline
     def type(self) -> AssetType:
         return self.data[].type
+
+    def __hash__[T: Hasher](self, mut hasher: T) -> None:
+        self.data[].symbol.__hash__(hasher)
+
+    def __eq__(self, other: Self, /) -> Bool:
+        return self.data[].symbol == other.data[].symbol
+
+    def __ne__(self, other: Self, /) -> Bool:
+        return self.data[].symbol != other.data[].symbol
 
     def value(self, size: Size, price: Float64) -> Amount:
         """Return the monetary amount given the size and price."""

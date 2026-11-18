@@ -19,6 +19,13 @@ trait Journal:
         """
         ...
 
+@fieldwise_init
+struct NoJournal(Journal):
+    """Journal that doesn't track anything."""
+
+    def track(mut self, account: Account, event: Event, signals: List[Signal], orders: List[Order]) -> None:
+        pass
+
 
 struct EquityTracker(Journal, Writable):
     """Tracks the equity of the account over time."""

@@ -74,10 +74,9 @@ trait PricingStrategy(Strategy):
     comptime SELL = -1.0
     comptime NO_RATING = 0.0
 
-  
     def create_signals(mut self, event: Event) -> List[Signal]:
         var signals: List[Signal] = []
-        for ref asset in event.items.keys():   
+        for asset in event.items.keys():   
             if case .Some(price) = event.get_price(asset):
                 var rating = self.create_rating(asset, price)
                 if rating:

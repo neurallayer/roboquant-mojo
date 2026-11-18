@@ -4,6 +4,7 @@ from std.os import abort
 from decimo import Decimal128
 from .time import Timestamp
 from std.utils import Variant
+from std.hash import Hasher
 
 
 comptime Size = Decimal128
@@ -74,6 +75,11 @@ struct CancelOrder(Copyable, Writable):
 @fieldwise_init
 struct ModifyOrder(Copyable, Writable):
     var id: String
+    var size: Optional[Size]
+    var limit: Optional[Float64]
+
+
+comptime OrderVariant = Variant[NewOrder, CancelOrder, ModifyOrder]
 
 @fieldwise_init
 struct Order(Copyable & Writable):
@@ -96,6 +102,9 @@ struct Order(Copyable & Writable):
         if self.is_new_order():
             return self.variant[NewOrder].copy()
         return None
+
+    def isa[T: AnyType](self) -> Bool:
+        return self.variant.isa[T]()
 
 
 struct OrderTicket(Equatable & Hashable & Copyable):
@@ -122,6 +131,11 @@ struct OrderTicket(Equatable & Hashable & Copyable):
         """
         return self.order.size < 0
 
+    def __eq__(self, other: OrderTicket) -> Bool :
+        return self.id == other.id
+
+    def __hash__[T: Hasher](self, mut hasher: T) -> None:
+        self.id.__hash__(hasher)
     
     def remaining(self) -> Size:
         """Return the remaining size of the order that has not been filled yet."""
@@ -149,15 +163,9 @@ struct OrderTicket(Equatable & Hashable & Copyable):
             size: The new size for the order. If None, the existing size will be retained.
             limit: The new limit price for the order. If None, the existing limit will be retained.
         Returns:
-            Order: A new Order instance with the modified size and/or limit.
-        """
-        var result = self.order.copy()
-        if size:
-            result.size = size.value()
-        if limit:
-            result.limit = limit.value()    
-        
-        return ModifyOrder(self.id)
+            Order: A modify Order instance with the modified size and/or limit.
+        """    
+        return ModifyOrder(self.id, size, limit)
 
     
     def is_executable(self, price: Float64) -> Bool:

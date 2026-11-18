@@ -10,7 +10,7 @@ from std.collections import Set
 from std.os import listdir
 from std.pathlib import Path
 from std.logger import Logger
-from max.algorithm import parallelize, sync_parallelize
+from max.algorithm import sync_parallelize
 from std.memory import ArcPointer
 
 
@@ -24,7 +24,6 @@ struct Candle(Copyable):
     var low: Float64
     var close: Float64
     var volume: Float64
-
 
     def __init__(
         out self,
@@ -187,15 +186,14 @@ struct HistoricFeed:
         var tl = List[Timestamp](capacity=l)
         var prices = List[Float64](capacity=l)
         for evt in self.play():
-            var price = evt.get_price(asset)
-            if price:
+            if case .Some(price) = evt.get_price(asset):
                 tl.append(evt.time)
                 prices.append(price.value())
         return TimeSeries.univariate(asset.symbol().value, tl^, prices^)
 
 
 
-def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int = 10) raises -> HistoricFeed:
+def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int = 10, type: String = "candle") raises -> HistoricFeed:
     """
     A RandomWalkFeed generates a sequence of Events with randomized Bar price data for testing purposes.
     It simulates a random walk in asset prices over a specified time range and step interval.
@@ -224,11 +222,16 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
     var prices = {asset:random_float64(50.0, 200.0) for asset in assets}
 
     while True:
-        var items = Dict[Asset, PriceItem](capacity=n_assets)
+        var items = Dict[Asset, PriceItem](capacity=n_assets*2)
         for asset in assets:
             var price = prices[asset]
-            var bar = Candle(price, price*1.01, price*0.99, price, 10_000)
-            var _ = items.insert(asset, PriceItem(bar^))
+            match type:
+                case "trade":
+                    var trade = TradePrice(price, 10_000)
+                    var _ = items.insert(asset, PriceItem(trade^))
+                case _:
+                    var candle = Candle(price, price*1.01, price*0.99, price, 10_000)
+                    var _ = items.insert(asset, PriceItem(candle^))
             prices[asset] = price * randn_float64(mean=1.0, standard_deviation=0.001)
 
         var evt = Event(time, items^)

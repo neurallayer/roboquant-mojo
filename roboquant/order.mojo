@@ -46,6 +46,7 @@ struct NewOrder(Copyable, Writable):
         limit (Optional[Float64]): Optionally a limit price for the order. If not set, the order is handled as a market order.
         tif (TIF): Time In Force, which specifies how long the order remains active before it is executed or expires.
         id (Optional[String]): An optional identifier for the order, which can be used for tracking and management purposes.
+        info: Arbitrary info included in the order. Typically the broker will use this.
     """
 
     var asset: Asset
@@ -62,11 +63,14 @@ struct NewOrder(Copyable, Writable):
     var tif: TIF
     """Time In Force, either DAY or GTC."""
 
-    def __init__(out self, asset: Asset, size: Size, limit: Optional[Float64], tif: TIF):
+    var info: Dict[String, String]
+
+    def __init__(out self, asset: Asset, size: Size, limit: Optional[Float64], tif: TIF, var info:Dict[String, String] ={}):
         self.asset = asset
         self.size = size
         self.limit = limit
         self.tif = tif
+        self.info = info^
 
 @fieldwise_init
 struct CancelOrder(Copyable, Writable):

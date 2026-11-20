@@ -69,7 +69,7 @@ struct FlexTrader(Trader):
                 var position_size = account.get_position_size(asset)
                 var size = Size.zero()
                 if position_size.is_zero() and signal.is_sell():
-                    # For now no shorting
+                    # For now no shorting is allowed
                     continue
                 elif position_size.is_positive() and signal.is_sell():
                     size = - position_size

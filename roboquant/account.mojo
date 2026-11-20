@@ -1,7 +1,7 @@
 from .money import Currency, Wallet, Amount
 from .time import Timestamp
 from .asset import Asset
-from .order import Order, Size, OrderTicket
+from .order import Order, Size, OrderTicket, NewOrder, TIF
 from std.os import abort
 
 @always_inline
@@ -50,12 +50,14 @@ struct Position(Copyable, Writable):
     var size: Size
     var avg_price: Float64
     var mkt_price: Float64
+    var info: Dict[String, String]
 
     def __init__(out self, asset: Asset, size: Size = Size(), avg_price: Float64 = 0.0, mkt_price: Float64 = 0.0):
         self.asset = asset
         self.size = size
         self.avg_price = avg_price
         self.mkt_price = mkt_price
+        self.info = {}
 
     @staticmethod
     def zero(asset: Asset) -> Position:
@@ -73,7 +75,10 @@ struct Position(Copyable, Writable):
 
     def pnl(self) -> Amount:
         """The unrealized Profit and Loss amount by this position."""
-        return self.asset.value(self.size, self.mkt_price - self.avg_price)    
+        return self.asset.value(self.size, self.mkt_price - self.avg_price)
+
+    def close_with_order(self, limit: Optional[Float64] = None, tif: TIF = TIF.GTC) -> Order:
+        return Order(NewOrder(self.asset, -self.size, limit ,tif, self.info.copy()))    
 
 
 @fieldwise_init
@@ -82,7 +87,8 @@ struct Account(Writable, Copyable):
 
     Attrs:
         last_update: The timestamp of the last update to the account.
-        positions: A list of open positions in the account. Support for both hedging and non-hedging accounts is provided, allowing for multiple positions in the same asset.
+        positions: A list of open positions in the account. Support for both hedging and non-hedging accounts
+        is provided, allowing for multiple positions in the same asset.
         orders: A list of open orders in the account.
         buying_power: The available buying power in the account.
         cash: The cash balance in the account.
@@ -132,6 +138,12 @@ struct Account(Writable, Copyable):
         """
         return asset.value(self.get_position_size(asset), price)
 
+    def has_order(self, asset: Asset) -> Bool:
+        """Return true is there are one or more orders for the provided asset."""
+        for ticket in self.orders:
+            if ticket.order.asset == asset:
+                return True
+        return False
 
     def unrealized_pnl(self) -> Wallet:
         """The unrealized Profit & Loss by open positions."""

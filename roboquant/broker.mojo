@@ -59,11 +59,33 @@ struct SimBroker(Broker):
                 var id = String(self.order_id)
                 self.orders.append(OrderTicket(id, variant[NewOrder].copy()))
             elif variant.isa[CancelOrder]():
-                pass
+                ref id = variant[CancelOrder].id
+                if not self.__remove_order(id):
+                    logger.warning("Couldn't find cancelled order")
             else:
-                pass
+                ref mo = variant[ModifyOrder]
+                if not self.__modify_order(mo.id, mo.size, mo.limit):
+                    logger.warning("Couldn't find modify order")
 
+
+    def __modify_order(mut self, id: String, size: Optional[Size], limit: Optional[Float64]) -> Bool:
+        for i in range(len(self.orders)):
+            if self.orders[i].id == id:
+                if case .Some(size) = size:
+                    self.orders[i].order.size = size
+                if case .Some(limit) = limit:
+                    self.orders[i].order.limit = limit
+                return True
+        return False
  
+    def __remove_order(mut self, id: String) -> Bool:
+        for i in range(len(self.orders)):
+            if self.orders[i].id == id:
+                _ = self.orders.pop(i)
+                return True
+        return False
+
+
     def __has_expired(self, ticket: OrderTicket, time: Timestamp) -> Bool:
         match ticket.order.tif:
             case TIF.GTC:

@@ -238,8 +238,8 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
     def __init__(out self):
         self.balances = {}
 
-    def __init__(out self, values: Dict[Currency, Float64]):
-        self.balances = values.copy()
+    def __init__(out self, var balances: Dict[Currency, Float64]):
+        self.balances = balances^
 
     def __init__(out self, *amounts: Amount):
         self.balances = {}
@@ -250,11 +250,11 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
 
     def __round__(self) -> Wallet:
         var rounded = {item.key: round(item.value) for item in self.balances.items()}
-        return Self(rounded)
+        return Self(rounded^)
 
     def __round__(self, number: Int) -> Wallet:
         var rounded = {item.key: round(item.value, number) for item in self.balances.items()}
-        return Self(rounded)
+        return Self(rounded^)
     
     def deposit(mut self, amount: Amount):
         var k = amount.currency
@@ -278,6 +278,39 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
         var v = self.balances.get(k, 0.0)
         self.balances[k] = v - amount.value
 
+    def __sub__(self, wallet: Wallet) -> Wallet:
+        var result = self.copy()
+        result.withdraw(wallet)
+        return result^
+
+    def __isub__(mut self, wallet: Wallet):
+        self.withdraw(wallet)
+
+    def __isub__(mut self, amount: Amount):
+        self.withdraw(amount)
+
+    def __iadd__(mut self, wallet: Wallet):
+        self.deposit(wallet)
+
+    def __iadd__(mut self, amount: Amount):
+        self.deposit(amount)
+      
+    def __add__(self, wallet: Wallet) -> Wallet:
+        var result = self.copy()
+        result.deposit(wallet)
+        return result^
+
+    def __sub__(self, amount: Amount) -> Wallet:
+        var result = self.copy()
+        result.withdraw(amount)
+        return result^
+
+    def __add__(self, amount: Amount) -> Wallet:
+        var result = self.copy()
+        result.deposit(amount)
+        return result^
+
+ 
     def amounts(self) -> List[Amount]:
         return [Amount(item.key, item.value) for item in self.balances.items()]
     
@@ -291,12 +324,6 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
 
     def __getitem__(self, currency: Currency) -> Amount:
         return self.get(currency) 
-
-    def __iadd__(mut self, amt: Amount):
-        self.deposit(amt)
-
-    def __isub__(mut self, amt: Amount):
-        self.withdraw(amt)
 
     def __len__(self) -> Int:
         return len(self.balances)

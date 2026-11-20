@@ -165,6 +165,15 @@ struct SimBroker(Broker):
 
         self.orders = orders^
         return trades^
+
+    def value_short_positions(self) -> Wallet:
+        var result = Wallet()
+        for item in self.positions.items():
+            ref pos = item.value
+            if pos.size < 0:
+                var amt = item.key.value(-pos.size, pos.mkt_price)
+                result.deposit(amt)
+        return result^
     
     def sync(mut self, event: Event) -> Account:
         try:
@@ -176,13 +185,14 @@ struct SimBroker(Broker):
                 if case .Some(price) = event.get_price(pos.asset):
                     pos.mkt_price = price
 
-            var bp =  self.converter.convert(self.cash, self.base_currency, event.time)
+            var bp = self.cash - self.value_short_positions() 
+            var bp_amt = self.converter.convert(bp, self.base_currency, event.time)
 
             return Account(
                 last_update = event.time,
                 positions = List(self.positions.values()),
                 orders = self.orders.copy(),
-                buying_power=bp,
+                buying_power=bp_amt,
                 cash=self.cash.copy(),
                 trades=trades^
             )

@@ -14,7 +14,7 @@ struct SignalType(Writable, ImplicitlyCopyable, Equatable):
     var _variant: Int
 
 
-struct Signal(Writable, ImplicitlyCopyable):
+struct Signal(Writable, Copyable):
     """Represents a trading signal for an asset with a rating.
     A rating has typically a value between -1.0 (strong sell) and 1.0 (strong buy).
     """
@@ -81,7 +81,7 @@ trait PricingStrategy(Strategy):
                 var rating = self.create_rating(asset, price)
                 if rating:
                     var signal = Signal(asset, rating)
-                    signals.append(signal)
+                    signals.append(signal^)
 
         return signals^
 
@@ -104,7 +104,7 @@ trait CandleStrategy(Strategy):
                 var rating = self.create_rating(asset, price[Candle])
                 if rating:
                     var signal = Signal(asset, rating)
-                    signals.append(signal)
+                    signals.append(signal^)
                 
         return signals^
 

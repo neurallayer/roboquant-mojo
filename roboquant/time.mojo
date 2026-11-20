@@ -8,8 +8,6 @@ from std.time import time
 comptime logger = Logger()
 
 comptime Timeline = List[Timestamp]
-comptime TIME_MIN = Timestamp(-2208988800000000000) # 1900-01-01
-comptime TIME_MAX = Timestamp(4102444800000000000) # 2100-01-01
 
 
 struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
@@ -25,9 +23,6 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
             is always inclusive. 
     """
 
-    comptime EMPTY = Timeframe(TIME_MIN, TIME_MIN, False)
-    comptime INFINITY = Timeframe(TIME_MIN, TIME_MAX, True)
-
     var start: Timestamp
     var end: Timestamp
     var inclusive: Bool
@@ -42,11 +37,17 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
         self.end = end
         self.inclusive = inclusive
 
+    @staticmethod
+    def empty() -> Self:
+        return Timeframe(Timestamp.MIN, Timestamp.MIN, False)
+
     def split(self, n: Int) -> List[Timeframe]:
         """
         Split the Timeframe into n smaller Timeframes of equal duration.
+
         Args:
             n: The number of smaller Timeframes to create.
+
         Returns:
             A list of n smaller Timeframes.
         """
@@ -173,7 +174,7 @@ def _pad_zero[I: Intable](value: I, width: Int) -> String:
 
 
 struct UTCDateTime(Copyable, Movable, Writable):
-    """Basic data-time object that assumes verything is in UTC timezone."""
+    """Basic date-time object that assumes everything is in UTC timezone."""
 
     var year: Int
     var month: Int
@@ -300,6 +301,9 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     It supports dates before the epoch with a negative value for the number of nanoseconds.
     """
 
+    comptime MIN = Timestamp(-2208988800000000000) # 1900-01-01
+    comptime MAX = Timestamp(4102444800000000000) # 2100-01-01
+
     var nanoseconds: Int
 
     def __init__(out self, nanoseconds: Int):
@@ -308,9 +312,11 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def __init__(s: String) raises -> Timestamp:
         """
         Convert an ISO format string to a timestamp.
+
         Args:
             s: The ISO format string to convert, for example "2020",
                 "2023-01-01" or "1999-01-01T12:00:00".
+
         Returns:
             The converted timestamp.
         """
@@ -320,9 +326,11 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def from_iso(s: String) raises -> Timestamp:
         """
         Convert an ISO format string to a timestamp.
+
         Args:
             s: The ISO format string to convert, for example "2020",
                 "2023-01-01" or "1999-01-01T12:00:00".
+
         Returns:
             The converted timestamp.
         """
@@ -411,11 +419,10 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     
     def format(self) -> String:
         """
-        Format a timestamp into a human-readable string using the specified format.
-        Args:
-            timestamp (Timestamp): The timestamp to format.
+        Format a timestamp into a human-readable string.
+
         Returns:
-            String: The formatted timestamp as a string.
+            The formatted timestamp as a string.
         """
         var dt = UTCDateTime.from_timestamp(self)
         return "{}".format(dt)

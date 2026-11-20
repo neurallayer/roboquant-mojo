@@ -1,4 +1,4 @@
-from .time import Timestamp, TIME_MIN
+from .time import Timestamp
 from std.os import abort, stat, mkdir
 from std.os.path import exists, expanduser, join
 from std.memory import ArcPointer
@@ -182,7 +182,7 @@ def load_ecb_exchange_rates() raises -> Converter:
                 pass
 
     var all_rates = {currencies[idx]:rates[idx].copy() for idx in range(l)}
-    all_rates[Currency.EUR] = [ExchangeRate(TIME_MIN, 1.0)]
+    all_rates[Currency.EUR] = [ExchangeRate(Timestamp.MIN, 1.0)]
     return Converter(all_rates^)
 
 

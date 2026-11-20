@@ -1,7 +1,7 @@
 from .feed import HistoricFeed
 from .broker import Broker
 from .trader import Trader
-from .time import Timeframe, TIME_MIN
+from .time import Timeframe
 from .account import Account
 from .strategy import Strategy, Event
 from .journal import Journal

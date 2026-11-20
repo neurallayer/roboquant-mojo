@@ -171,7 +171,7 @@ struct HistoricFeed:
         determined by the timestamps of the first and last events.
         """
         if not self.events:
-            return Timeframe.EMPTY
+            return Timeframe.empty()
         return Timeframe(self.events[0].time, self.events[len(self.events)-1].time, True)
 
     def count_items(self) -> Int:

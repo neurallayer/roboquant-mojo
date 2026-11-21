@@ -44,7 +44,7 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
         """
         return Amount(self, other)
 
-trait CurrencyConverter():
+trait CurrencyConverter(Deinitable & Movable):
 
     def convert(self, wallet: Wallet, to_currency: Currency, time: Timestamp) raises -> Amount:
         """Convert a wallet to a single amount."""
@@ -70,6 +70,7 @@ trait CurrencyConverter():
         ...
 
 
+@fieldwise_init
 struct NoConverter(CurrencyConverter):
     """Doesn't convert between different currencies."""
 

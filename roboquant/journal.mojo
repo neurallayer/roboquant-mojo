@@ -2,7 +2,7 @@ from .account import Account, Trade
 from .feed import Event
 from .strategy import Signal
 from .order import Order
-from .money import Wallet, Converter
+from .money import Wallet, CurrencyConverter, NoConverter
 from std.time import perf_counter
 from .time import Timestamp, TimeSeries
 from std.logger import Logger
@@ -27,17 +27,17 @@ struct NoJournal(Journal):
         pass
 
 
-struct EquityTracker(Journal, Writable):
+struct EquityTracker[T: CurrencyConverter](Journal, Writable):
     """Tracks the equity of the account over time."""
 
     var equity: List[Float64]
     var times: List[Timestamp]
-    var converter: Converter
+    var converter: Self.T
     
-    def __init__(out self, currency_converter: Converter = Converter()):
+    def __init__(out self, var currency_converter: Self.T = NoConverter()):
         self.equity = []
         self.times = []
-        self.converter = currency_converter
+        self.converter = currency_converter^
 
     def get_performance(self) -> Float64:
         """

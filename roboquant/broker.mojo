@@ -1,7 +1,7 @@
 
 from .order import NewOrder, Order, TIF, OrderTicket, Size, CancelOrder, ModifyOrder
 from .account import Account, Position, Trade
-from .money import Wallet, Amount, Currency, Converter, USD
+from .money import Wallet, Amount, Currency, Converter, USD, CurrencyConverter, NoConverter
 from .asset import Asset
 from .feed import Event
 from .time import Timestamp
@@ -27,7 +27,7 @@ trait Broker:
         ...
 
 
-struct SimBroker(Broker):
+struct SimBroker[T: CurrencyConverter](Broker):
     """A simulated broker that tracks positions and a virtual cash wallet
     while simulating a market place."""
 
@@ -38,9 +38,9 @@ struct SimBroker(Broker):
     var order_id: Int
     var tz_offset_seconds: Int
     var fee_pct: Float64
-    var converter: Converter
+    var converter: Self.T
 
-    def __init__(out self, deposit: Amount = Amount(USD, 100_000), tz_offset_seconds: Int = 0, fee_pct: Float64 = 0.0, currency_converter: Converter = Converter()):
+    def __init__(out self, deposit: Amount = Amount(USD, 100_000), tz_offset_seconds: Int = 0, fee_pct: Float64 = 0.0, var currency_converter: Self.T = NoConverter()):
         self.orders = []
         self.positions = {}
         self.cash = Wallet(deposit)
@@ -48,7 +48,7 @@ struct SimBroker(Broker):
         self.order_id = 0
         self.tz_offset_seconds = tz_offset_seconds
         self.fee_pct = fee_pct
-        self.converter = currency_converter
+        self.converter = currency_converter^
 
     def place_orders(mut self, orders: List[Order]) -> None:
         for order in orders:

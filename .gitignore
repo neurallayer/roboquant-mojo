@@ -6,3 +6,4 @@ scratch/*
 lib/*
 .idea/*
 .env
+/test_run*

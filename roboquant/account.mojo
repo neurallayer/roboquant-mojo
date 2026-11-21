@@ -130,11 +130,15 @@ struct Account(Writable, Copyable):
             abort("Couldn't calculate position size")
 
     def get_position_value(self, asset: Asset, price: Float64) -> Amount:
-        """Return the netting position value for an asset.
+        """Return the netting position value for an asset denoted in the currency
+        of the underlying asset.
 
         Args:
             asset: The asset for which to calculate the netting value.
             price: The price to use.
+
+        Returns:
+            The netting Amount.
         """
         return asset.value(self.get_position_size(asset), price)
 

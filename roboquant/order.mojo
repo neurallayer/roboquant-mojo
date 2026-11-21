@@ -40,15 +40,14 @@ struct TIF(ImplicitlyCopyable, Writable, Equatable):
 
 struct NewOrder(Copyable, Writable):
     """
-    An Order represents a request to buy or sell a specific asset in the market.
+    A  new order represents a request to buy or sell a specific asset in the market.
 
     Attributes:
-        asset (Asset): The underlying asset of the order.
-        size (Size): The size of the order.
-        limit (Optional[Float64]): Optionally a limit price for the order. If not set, the order is handled as a market order.
-        tif (TIF): Time In Force, which specifies how long the order remains active before it is executed or expires.
-        id (Optional[String]): An optional identifier for the order, which can be used for tracking and management purposes.
-        info: Arbitrary info included in the order. Typically the broker will use this.
+        asset: The underlying asset of the order.
+        size: The size of the order.
+        limit: Optionally a limit price for the order. If not set, the order is handled as a market order.
+        tif: Time In Force, which specifies how long the order remains active before it is executed or expires.
+        info: Arbitrary info included in the order. Typically only used by a broker implementation.
     """
 
     var asset: Asset
@@ -76,6 +75,7 @@ struct NewOrder(Copyable, Writable):
 
 @fieldwise_init
 struct CancelOrder(Copyable, Writable):
+    """Cancel an existing order."""
     var id: String
 
 @fieldwise_init
@@ -89,7 +89,7 @@ comptime OrderVariant = Variant[NewOrder, CancelOrder, ModifyOrder]
 
 @fieldwise_init
 struct Order(Copyable & Writable):
-    var variant : Variant[NewOrder, CancelOrder, ModifyOrder]
+    var variant : OrderVariant
 
     @staticmethod
     def market_order(asset: Asset, size: Size, tif: TIF = TIF.GTC) -> Self:
@@ -115,7 +115,7 @@ struct Order(Copyable & Writable):
 
 struct OrderTicket(Equatable & Hashable & Copyable):
     var id: String
-    var fill: Int
+    var fill: Size
     var time: Optional[Timestamp]
     var order: NewOrder
 
@@ -168,8 +168,9 @@ struct OrderTicket(Equatable & Hashable & Copyable):
         Args:
             size: The new size for the order. If None, the existing size will be retained.
             limit: The new limit price for the order. If None, the existing limit will be retained.
+
         Returns:
-            Order: A modify Order instance with the modified size and/or limit.
+            A modify Order instance with the modified size and/or limit.
         """    
         return ModifyOrder(self.id, size, limit)
 

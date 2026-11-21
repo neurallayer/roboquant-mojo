@@ -10,6 +10,7 @@ demo = { cmd = "pixi run mojo -I lib tests/demo_chart.mojo", depends-on = ["prec
 perf = { cmd = "pixi run mojo -I lib tests/test_run.mojo", depends-on = ["precompile"]}
 perf2 = { cmd = "pixi run mojo -I lib tests/test_csv.mojo", depends-on = ["precompile"]}
 test = { cmd = "./tests/run_tests.sh", depends-on = ["precompile"]}
+profile = { cmd = "pixi run mojo run -g --debug-level full --debug-info-language C -I lib tests/test_run.mojo", depends-on = ["precompile"]}
 
 
 [dependencies]

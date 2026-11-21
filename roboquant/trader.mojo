@@ -35,7 +35,7 @@ struct FlexTrader[T: CurrencyConverter](Trader):
 
     Attributes:
         order_amount: The fixed amount to be used for calculating the order size.
-        step_size: The rounding to se for order sizes, default "1" is no fractional orders.
+        step_size: The rounding to use for order sizes, default "1" is no fractional orders.
         max_position: The maximum value a position should take
         currency_converter: the currency converter to use, default is no conversion
     """
@@ -45,7 +45,7 @@ struct FlexTrader[T: CurrencyConverter](Trader):
     var step_size: String
     var converter: Self.T
 
-    def __init__(out self, order_amount: Amount = Amount("USD", 5_000), step_size: String = "1", var currency_converter: Self.T = NoConverter()):
+    def __init__(out self, order_amount: Amount = Amount("USD", 100_000), step_size: String = "1", var currency_converter: Self.T = NoConverter()):
         self.order_amount = order_amount
         self.step_size = step_size
         self.max_position = order_amount * 10

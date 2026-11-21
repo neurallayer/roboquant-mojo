@@ -52,7 +52,7 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
     The Asset struct represents a financial instrument that can be traded in the market.
     It is uniquely identified by only its symbol, which is a string representing the asset's ticker or identifier.
     The Asset struct also includes information about the currency in which the asset is denominated,
-    the type of asset (e.g., stock, option, forex, crypto), and the contract size for trading purposes.
+    the type of asset (e.g., stock, option, forex, crypto), and the contract size.
     """
 
     var data: ArcPointer[__AssetData]

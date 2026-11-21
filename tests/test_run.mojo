@@ -27,7 +27,7 @@ def test_run() raises:
     # 10-minute bars for 26 years
     var feed = random_walk(start="2000-01-01",end="2026-01-01", step_seconds = 600.0, n_assets=10)
     # print("feed bars is ", feed.count_items())
-  
+
     # Run over the entire feed timeframe
     _measure_run(feed, None)
 

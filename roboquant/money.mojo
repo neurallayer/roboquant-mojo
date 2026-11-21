@@ -7,8 +7,10 @@ from std.logger import Logger
 
 comptime logger = Logger()
 
-comptime USD = Currency.USD
-comptime EUR = Currency.EUR
+comptime USD = Currency("USD")
+comptime EUR = Currency("EUR")
+comptime GBP = Currency("GBP")
+comptime JPY = Currency("JPY")
 
 struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     """
@@ -16,11 +18,6 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     It is uniquely identified by its code, which is a string representing the
     currency's code (e.g., "USD" for US Dollar, "EUR" for Euro).
     """
-
-    comptime USD = Self("USD")
-    comptime EUR = Self("EUR")
-    comptime GBP = Self("GBP")
-    comptime JPY = Self("JPY")
    
     var code: String 
 
@@ -33,26 +30,30 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
 
     def __rmatmul__(self, other: Float64) -> Amount:
         """Allow the use of the @ operator to create an Amount with the specified currency and value.
+
         Args:
             other: The monetary value to be associated with the currency.
+
         Returns:
             An Amount instance representing the specified value in the given currency.
 
         Example:
-            usd_amount = 100.0@USD  # Creates an Amount of 100 USD
+        ```mojo
+        usd_amount = 100.0@USD  # Creates an Amount of 100 USD
+        ```
         """
         return Amount(self, other)
-
-@fieldwise_init
-struct ExchangeRate(ImplicitlyCopyable, TrivialRegisterPassable):
-    var time: Timestamp
-    var rate: Float64
-
 
 trait CurrencyConverter():
 
     def convert(self, wallet: Wallet, to_currency: Currency, time: Timestamp) raises -> Amount:
         """Convert a wallet to a single amount."""
+
+        # Optimization for single currency
+        if wallet.is_single_currency(to_currency):
+            return wallet[to_currency]
+
+        # Multi-currency path
         var sum = 0.0
         for amount in wallet.amounts():
             sum += self.convert_float(amount, to_currency, time)
@@ -79,6 +80,14 @@ struct NoConverter(CurrencyConverter):
             return 0.0
 
         raise("No conversion possible")
+
+
+
+@fieldwise_init
+struct ExchangeRate(Copyable, TrivialRegisterPassable):
+    var time: Timestamp
+    var rate: Float64
+
 
 
 struct Converter(CurrencyConverter, ImplicitlyCopyable):
@@ -182,7 +191,7 @@ def load_ecb_exchange_rates() raises -> Converter:
                 pass
 
     var all_rates = {currencies[idx]:rates[idx].copy() for idx in range(l)}
-    all_rates[Currency.EUR] = [ExchangeRate(Timestamp.MIN, 1.0)]
+    all_rates[EUR] = [ExchangeRate(Timestamp.MIN, 1.0)]
     return Converter(all_rates^)
 
 
@@ -201,7 +210,7 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
         return Self(self.currency, round(self.value, number))
 
     @staticmethod
-    def zero(currency: Currency = Currency.USD) -> Self:
+    def zero(currency: Currency = USD) -> Self:
         return Self(currency, 0.0)
 
     def write_to(self, mut writer: Some[Writer]):
@@ -267,6 +276,9 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
             var v = self.balances.get(k, 0.0)
             self.balances[k] = v + item.value
 
+    def is_single_currency(self, currency: Currency) -> Bool:
+        return (len(self.balances) == 0) or ((len(self.balances) == 1) and (currency in self.balances))
+
     def withdraw(mut self, wallet: Wallet):
         for item in wallet.balances.items():
             var k = item.key
@@ -310,7 +322,9 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
         result.deposit(amount)
         return result^
 
- 
+    def convert_to(self, currency: Currency, time: Timestamp, converter: Some[CurrencyConverter]) raises -> Amount:
+        return converter.convert(self, currency, time)
+
     def amounts(self) -> List[Amount]:
         return [Amount(item.key, item.value) for item in self.balances.items()]
     
@@ -318,6 +332,7 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
         for item in self.amounts():
             writer.write(item, " ") 
 
+    @inline(.always)
     def get(self, currency: Currency) -> Amount:
         var value = self.balances.get(currency, 0.0)
         return Amount(currency, value) 

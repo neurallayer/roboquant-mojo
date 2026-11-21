@@ -1,4 +1,4 @@
-from .money import Currency, Amount
+from .money import Currency, Amount, USD
 from .order import Size
 from std.hash import Hasher
 from std.memory import ArcPointer
@@ -58,7 +58,7 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
     var data: ArcPointer[__AssetData]
    
     @staticmethod
-    def Stock(symbol: Symbol, currency: Currency = Currency.USD) -> Asset:
+    def Stock(symbol: Symbol, currency: Currency = USD) -> Asset:
         """Create a new Stock with the provided symbol and currency."""
         var data = __AssetData(symbol, currency, AssetType.STOCK, Size.one())
         return Asset(ArcPointer(data^))
@@ -76,7 +76,7 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
         return Asset(ArcPointer(data^))
 
     @staticmethod
-    def Option(symbol: Symbol, currency: Currency = Currency.USD) -> Asset:
+    def Option(symbol: Symbol, currency: Currency = USD) -> Asset:
         """Create a new Stock with the provided symbol and currency."""
         var data = __AssetData(symbol, currency, AssetType.OPTION, Size(100))
         return Asset(ArcPointer(data^))

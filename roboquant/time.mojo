@@ -80,6 +80,7 @@ struct TimeSeries(Copyable, Writable):
     """
     A TimeSeries represents a series of data points indexed by time.
     It is used to store and manage time-based data, such as financial market data.
+
     Attributes:
         timeline: A list of timestamps representing the time points of the series.
         data: A dictionary of values corresponding to each timestamp in the series.

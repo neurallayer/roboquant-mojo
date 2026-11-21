@@ -24,7 +24,7 @@ trait Trader:
             event: Current event providing prices and the timestamp.
 
         Returns:
-            The orders created for the supplied signals.
+            Zero or more orders.
         """
         ...
 

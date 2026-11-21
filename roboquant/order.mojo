@@ -9,6 +9,8 @@ from std.hash import Hasher
 
 comptime Size = Decimal128
 
+comptime Info = Dict[String, String]
+
 @fieldwise_init
 struct TIF(ImplicitlyCopyable, Writable, Equatable):
     """
@@ -63,9 +65,9 @@ struct NewOrder(Copyable, Writable):
     var tif: TIF
     """Time In Force, either DAY or GTC."""
 
-    var info: Dict[String, String]
+    var info: Info
 
-    def __init__(out self, asset: Asset, size: Size, limit: Optional[Float64], tif: TIF, var info:Dict[String, String] ={}):
+    def __init__(out self, asset: Asset, size: Size, limit: Optional[Float64], tif: TIF, var info: Info = Info()):
         self.asset = asset
         self.size = size
         self.limit = limit

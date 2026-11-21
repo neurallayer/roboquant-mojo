@@ -1,7 +1,7 @@
 from .asset import Asset
 from .time import Timestamp, Timeframe, TimeSeries, UTCDateTime
 from .order import Size
-from .money import Currency
+from .money import Currency, USD
 
 from std.utils import Variant, BlockingScopedLock, BlockingSpinLock
 from std.random import random_float64, randn_float64, seed, random_ui64, shuffle
@@ -132,20 +132,33 @@ struct Event(Sized, Copyable, Comparable):
 
     def get_price(self, asset: Asset, type: String = "DEFAULT") -> Optional[Float64]:
         try: 
-            ref item = self.items[asset]
-            return item.get_price(type)
+            return self.items[asset].get_price(type)
         except:
             return None
+
+    def get_prices(self, type: String = "DEFAULT") -> List[Tuple[Asset, Float64]]:
+        var result = List[Tuple[Asset, Float64]](capacity=len(self.items))
+        for item in self.items.items():
+            result.append((item.key,item.value.get_price(type)))
+        return result^
  
     def get_volume(self, asset: Asset, type: String = "DEFAULT") -> Optional[Float64]:
         try:
-            ref item = self.items[asset]
-            return item.get_volume(type)
+            return self.items[asset].get_volume(type)
         except:
             return None
+
+    def get_volumes(self, type: String = "DEFAULT") -> List[Tuple[Asset, Float64]]:
+        var result = List[Tuple[Asset, Float64]](capacity=len(self.items))
+        for item in self.items.items():
+            result.append((item.key,item.value.get_volume(type)))
+        return result^
     
     def __lt__(self, other: Event) -> Bool:
         return self.time < other.time
+
+    def __gt__(self, other: Event) -> Bool:
+        return self.time > other.time
 
 
   
@@ -265,7 +278,7 @@ def __parse_stooq_file(filename: String) -> List[Tuple[Timestamp, PriceItem]]:
     return result^
 
 
-def csv_feed(dir_path: String, extension: String = ".csv", currency: Currency = Currency.USD) raises -> HistoricFeed:
+def csv_feed(dir_path: String, extension: String = ".csv", currency: Currency = USD) raises -> HistoricFeed:
     var data = Dict[Timestamp, Dict[Asset, PriceItem]]()
     var all_entries = listdir(dir_path)
     
@@ -289,7 +302,7 @@ struct CSVResult(Copyable):
     var filename: String
     var prices: List[Tuple[Timestamp, PriceItem]]
 
-def csv_feed_parallel(dir_path: String, extension: String = ".csv", currency: Currency = Currency.USD) raises -> HistoricFeed:
+def csv_feed_parallel(dir_path: String, extension: String = ".csv", currency: Currency = USD) raises -> HistoricFeed:
     """Parse the CSV files in paralell."""
 
     var data = Dict[Timestamp, Dict[Asset, PriceItem]]()

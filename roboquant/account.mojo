@@ -1,7 +1,7 @@
 from .money import Currency, Wallet, Amount
 from .time import Timestamp
 from .asset import Asset
-from .order import Order, Size, OrderTicket, NewOrder, TIF
+from .order import Order, Size, OrderTicket, NewOrder, TIF, Info
 from std.os import abort
 
 @always_inline
@@ -50,14 +50,14 @@ struct Position(Copyable, Writable):
     var size: Size
     var avg_price: Float64
     var mkt_price: Float64
-    var info: Dict[String, String]
+    var info: Info
 
-    def __init__(out self, asset: Asset, size: Size = Size(), avg_price: Float64 = 0.0, mkt_price: Float64 = 0.0):
+    def __init__(out self, asset: Asset, size: Size, avg_price: Float64 = 0.0, mkt_price: Float64 = 0.0, var info: Info = Info()):
         self.asset = asset
         self.size = size
         self.avg_price = avg_price
         self.mkt_price = mkt_price
-        self.info = {}
+        self.info = info^
 
     @staticmethod
     def zero(asset: Asset) -> Position:
@@ -188,5 +188,12 @@ struct Account(Writable, Copyable):
             writer.write("none")
 
         writer.write("\n")
+
+    def close_orders(self, asset: Asset, limit: Optional[Float64] = None, tif: TIF = TIF.GTC) -> List[Order]:
+        var result = List[Order]()
+        for pos in self.positions:
+            if pos.asset == asset:
+                result.append(pos.close_with_order(limit, tif))
+        return result^
 
         

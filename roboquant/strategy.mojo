@@ -76,12 +76,11 @@ trait PricingStrategy(Strategy):
 
     def create_signals(mut self, event: Event) -> List[Signal]:
         var signals: List[Signal] = []
-        for asset in event.items.keys():   
-            if case .Some(price) = event.get_price(asset):
-                var rating = self.create_rating(asset, price)
-                if rating:
-                    var signal = Signal(asset, rating)
-                    signals.append(signal^)
+        for asset,price in event.get_prices():   
+            var rating = self.create_rating(asset, price)
+            if rating:
+                var signal = Signal(asset, rating)
+                signals.append(signal^)
 
         return signals^
 

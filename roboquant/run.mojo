@@ -5,6 +5,20 @@ from .time import Timeframe
 from .account import Account
 from .strategy import Strategy, Event
 from .journal import Journal
+from std.time import perf_counter
+
+
+struct Counter:
+    var value: Float64
+
+    def __init__(out self):
+        self.value = perf_counter()
+
+    def elapsed(mut self) -> Float64:
+        var old_time = self.value
+        self.value = perf_counter()
+        return self.value - old_time
+
 
 
 def run(
@@ -42,3 +56,56 @@ def run(
         else:
             if evt.time > timeframe.value():
                 break
+
+
+
+def measured_run(
+        feed: HistoricFeed,
+        mut strategy: Some[Strategy],
+        mut trader: Some[Trader],
+        mut broker: Some[Broker],
+        mut journal: Some[Journal],
+        timeframe: Optional[Timeframe] = None
+    ) -> Dict[String, Float64]:
+    """Run the trading loop over all events produced by the feed.
+
+    For every event, the broker is synced with the event, the strategy
+    creates signals, the trader converts those signals into orders, the
+    broker places the orders and the journal tracks the resulting account
+    state. When a `timeframe` is supplied, only events that fall outside of
+    it (i.e. strictly after the timeframe) are skipped, and the loop stops
+    once the event time exceeds the timeframe.
+
+    Args:
+        feed: The historic feed that produces the events to replay.
+        strategy: The strategy used to create signals for each event.
+        trader: The trader that turns signals into orders.
+        broker: The broker that syncs the account and places orders.
+        journal: The journal that records account, signal and order data.
+        timeframe: Optional timeframe restricting which events are processed.
+    """
+    var times = Array[Float64, 5](fill=0.0)
+    var cnt = Counter()
+    for evt in feed.play():
+        if not timeframe or evt.time in timeframe.value():
+            _ = cnt.elapsed()
+            var account = broker.sync(evt)
+            times[0] += cnt.elapsed()
+            var signals = strategy.create_signals(evt)
+            times[1] += cnt.elapsed()
+            var orders = trader.create_orders(signals, account, evt)
+            times[2] += cnt.elapsed()
+            broker.place_orders(orders)
+            times[3] += cnt.elapsed()
+            journal.track(account, evt, signals, orders)
+            times[4] += cnt.elapsed()
+        else:
+            if evt.time > timeframe.value():
+                break
+    return {
+        "broker.sync" : times[0],
+        "strategy.create_signals": times[1],
+        "trader.create_orders": times[2],
+        "broker.place_orders": times[3],
+        "journal.track": times[4]
+    }

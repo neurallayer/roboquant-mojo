@@ -74,12 +74,17 @@ trait PricingStrategy(Strategy):
     comptime SELL = -1.0
     comptime NO_RATING = 0.0
 
+    def get_price_type(self) -> String:
+        return "DEFAULT"
+
     def create_signals(mut self, event: Event) -> List[Signal]:
         var signals: List[Signal] = []
-        for asset,price in event.get_prices():   
-            var rating = self.create_rating(asset, price)
+        var type = self.get_price_type()
+        for item in event.items.items():
+            var price = item.value.get_price(type)
+            var rating = self.create_rating(item.key, price)
             if rating:
-                var signal = Signal(asset, rating)
+                var signal = Signal(item.key, rating)
                 signals.append(signal^)
 
         return signals^
@@ -124,15 +129,19 @@ struct EMACrossOver(PricingStrategy):
     var min_n: Int
     var fast: Float64
     var slow: Float64
+    var price_type: String
 
-    def __init__(out self, fast_period: Int = 13, slow_period: Int = 26, smoothing: Float64 = 2.0, min_n: Optional[Int] = None):
+    def __init__(out self, fast_period: Int = 13, slow_period: Int = 26, smoothing: Float64 = 2.0, min_n: Optional[Int] = None, price_type: String = "DEFAULT"):
         self.history = {}
         self.fast = 1.0 - (smoothing / Float64(fast_period + 1))
         self.slow = 1.0 - (smoothing / Float64(slow_period + 1))
         self.min_n = slow_period if not min_n else min_n.value()
+        self.price_type = price_type
+
+    def get_price_type(self) -> String:
+        return self.price_type
 
     def create_rating(mut self, asset: Asset, price: Float64) -> Float64:
-    
         var (n, old_ema_fast, old_ema_slow) = self.history.get(asset, (0, price, price))
         n += 1
 
@@ -151,4 +160,3 @@ struct EMACrossOver(PricingStrategy):
                 return self.BUY
 
         return self.NO_RATING
-

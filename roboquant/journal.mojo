@@ -28,7 +28,8 @@ struct NoJournal(Journal):
 
 
 struct EquityTracker[T: CurrencyConverter](Journal, Writable):
-    """Tracks the equity of the account over time."""
+    """Tracks the equity of the account over time. The values are converted to
+    the base currency of the account."""
 
     var equity: List[Float64]
     var times: List[Timestamp]

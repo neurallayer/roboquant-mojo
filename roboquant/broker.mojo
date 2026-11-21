@@ -1,7 +1,22 @@
-
-from .order import NewOrder, Order, TIF, OrderTicket, Size, CancelOrder, ModifyOrder
+from .order import (
+    NewOrder,
+    Order,
+    TIF,
+    OrderTicket,
+    Size,
+    CancelOrder,
+    ModifyOrder,
+)
 from .account import Account, Position, Trade
-from .money import Wallet, Amount, Currency, Converter, USD, CurrencyConverter, NoConverter
+from .money import (
+    Wallet,
+    Amount,
+    Currency,
+    Converter,
+    USD,
+    CurrencyConverter,
+    NoConverter,
+)
 from .asset import Asset
 from .feed import Event
 from .time import Timestamp
@@ -15,15 +30,15 @@ trait Broker:
     """Broker if responsible for placing orders at the real broker and communicating
     back the latest state through the account object.
 
-    Brokers are not copyable, since they typically hold connections 
-    to a real brokers API end-points.""" 
+    Brokers are not copyable, since they typically hold connections
+    to a real brokers API end-points."""
 
     def place_orders(mut self, orders: List[Order]) -> None:
         """Place zero or more orders at the broker."""
         ...
 
     def sync(mut self, event: Event) -> Account:
-        """"Sync the broker and return the updated account."""
+        """ "Sync the broker and return the updated account."""
         ...
 
 
@@ -40,7 +55,13 @@ struct SimBroker[T: CurrencyConverter](Broker):
     var fee_pct: Float64
     var converter: Self.T
 
-    def __init__(out self, deposit: Amount = Amount(USD, 100_000), tz_offset_seconds: Int = 0, fee_pct: Float64 = 0.0, var currency_converter: Self.T = NoConverter()):
+    def __init__(
+        out self,
+        deposit: Amount = Amount(USD, 100_000),
+        tz_offset_seconds: Int = 0,
+        fee_pct: Float64 = 0.0,
+        var currency_converter: Self.T = NoConverter(),
+    ):
         self.orders = []
         self.positions = {}
         self.cash = Wallet(deposit)
@@ -67,8 +88,9 @@ struct SimBroker[T: CurrencyConverter](Broker):
                 if not self.__modify_order(mo.id, mo.size, mo.limit):
                     logger.warning("Couldn't find modify order")
 
-
-    def __modify_order(mut self, id: String, size: Optional[Size], limit: Optional[Float64]) -> Bool:
+    def __modify_order(
+        mut self, id: String, size: Optional[Size], limit: Optional[Float64]
+    ) -> Bool:
         for i in range(len(self.orders)):
             if self.orders[i].id == id:
                 if case .Some(size) = size:
@@ -77,14 +99,13 @@ struct SimBroker[T: CurrencyConverter](Broker):
                     self.orders[i].order.limit = limit
                 return True
         return False
- 
+
     def __remove_order(mut self, id: String) -> Bool:
         for i in range(len(self.orders)):
             if self.orders[i].id == id:
                 _ = self.orders.pop(i)
                 return True
         return False
-
 
     def __has_expired(self, ticket: OrderTicket, time: Timestamp) -> Bool:
         match ticket.order.tif:
@@ -102,7 +123,9 @@ struct SimBroker[T: CurrencyConverter](Broker):
         except:
             pass
 
-    def __update_position(mut self, asset: Asset, fill: Size, price: Float64) raises -> Amount:
+    def __update_position(
+        mut self, asset: Asset, fill: Size, price: Float64
+    ) raises -> Amount:
         """update position based on a fill and return the realized pnl"""
         if fill.is_zero():
             return Amount(asset.currency(), 0.0)
@@ -115,11 +138,15 @@ struct SimBroker[T: CurrencyConverter](Broker):
 
         # position increase
         if (pos.size >= 0 and fill > 0) or (pos.size <= 0 and fill < 0):
-            avg_price = (pos.avg_price * Float64(pos.size) + price * Float64(fill)) / Float64(new_size)
+            avg_price = (
+                pos.avg_price * Float64(pos.size) + price * Float64(fill)
+            ) / Float64(new_size)
             pnl = Amount(asset.currency(), 0)
 
         # position decrease
-        elif (pos.size >= 0 and new_size > 0) or (pos.size <= 0 and new_size < 0):
+        elif (pos.size >= 0 and new_size > 0) or (
+            pos.size <= 0 and new_size < 0
+        ):
             avg_price = pos.avg_price
             pnl = asset.value(fill, price - pos.avg_price)
 
@@ -129,24 +156,25 @@ struct SimBroker[T: CurrencyConverter](Broker):
             pnl = asset.value(pos.size, price - pos.avg_price)
 
         if new_size:
-            self.positions[asset] = Position(asset, new_size, avg_price, pos.mkt_price)
+            self.positions[asset] = Position(
+                asset, new_size, avg_price, pos.mkt_price
+            )
         else:
             self.__close_position(pos)
 
         return pnl
 
-
     def __process_orders(mut self, ref event: Event) raises -> List[Trade]:
         if not self.orders:
             return []
-    
+
         var trades = List[Trade]()
         var orders = List[OrderTicket]()
-      
+
         for ref ticket in self.orders:
             if ticket.remaining().is_zero():
                 continue
-            
+
             if not ticket.time:
                 ticket.time = event.time
             elif self.__has_expired(ticket, event.time):
@@ -155,12 +183,16 @@ struct SimBroker[T: CurrencyConverter](Broker):
             ref order = ticket.order
             if case .Some(price) = event.get_price(order.asset):
                 if ticket.is_executable(price):
-                    var pnl = self.__update_position(order.asset.copy(), ticket.remaining(), price)
-                    var trade = Trade(order.asset, order.size, price, pnl, event.time)
+                    var pnl = self.__update_position(
+                        order.asset.copy(), ticket.remaining(), price
+                    )
+                    var trade = Trade(
+                        order.asset, order.size, price, pnl, event.time
+                    )
                     self.cash.withdraw(trade.value())
                     trades.append(trade^)
                     continue
-            
+
             orders.append(ticket.copy())
 
         self.orders = orders^
@@ -174,7 +206,7 @@ struct SimBroker[T: CurrencyConverter](Broker):
                 var amt = item.key.value(-pos.size, pos.mkt_price)
                 result.deposit(amt)
         return result^
-    
+
     def sync(mut self, event: Event) -> Account:
         try:
             # process the open orders
@@ -185,17 +217,18 @@ struct SimBroker[T: CurrencyConverter](Broker):
                 if case .Some(price) = event.get_price(pos.asset):
                     pos.mkt_price = price
 
-            var bp = self.cash - self.__exposure_short_positions() 
-            var bp_amt = bp.convert_to(self.base_currency, event.time, self.converter)
+            var bp = self.cash - self.__exposure_short_positions()
+            var bp_amt = bp.convert_to(
+                self.base_currency, event.time, self.converter
+            )
 
             return Account(
-                last_update = event.time,
-                positions = List(self.positions.values()),
-                orders = self.orders.copy(),
+                last_update=event.time,
+                positions=List(self.positions.values()),
+                orders=self.orders.copy(),
                 buying_power=bp_amt,
                 cash=self.cash.copy(),
-                trades=trades^
+                trades=trades^,
             )
         except e:
             abort(String(e))
-

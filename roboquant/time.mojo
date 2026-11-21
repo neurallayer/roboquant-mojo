@@ -51,7 +51,6 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
         Returns:
             A list of n smaller Timeframes.
         """
-
         var result:  List[Timeframe] = List[Timeframe](capacity=n)
         var start = self.start
         var step = (self.end - self.start) / n

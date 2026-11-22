@@ -201,16 +201,15 @@ struct HistoricFeed:
         for evt in self.play():
             if case .Some(price) = evt.get_price(asset):
                 tl.append(evt.time)
-                prices.append(price.value())
+                prices.append(price)
         return TimeSeries.univariate(asset.symbol().value, tl^, prices^)
 
 
 
 def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int = 10, type: String = "candle") raises -> HistoricFeed:
     """
-    A RandomWalkFeed generates a sequence of Events with randomized Bar price data for testing purposes.
+    A Random-Walk generates a sequence of Events with Candle or Trade price data for testing purposes.
     It simulates a random walk in asset prices over a specified time range and step interval.
-    The feed can be used to test trading strategies and algorithms in a controlled environment.
     """
 
     var symbols = Set[String]()
@@ -279,6 +278,12 @@ def __parse_stooq_file(filename: String) -> List[Tuple[Timestamp, PriceItem]]:
 
 
 def csv_feed(dir_path: String, extension: String = ".csv", currency: Currency = USD) raises -> HistoricFeed:
+    """Parse the CSV files in a directory and return a HistoricFeed.
+
+    The CSV files are expected to be in the Stooq format. The filename is used as the symbol.
+    The extension is used to filter the files. The currency is used for the assets.
+    """
+
     var data = Dict[Timestamp, Dict[Asset, PriceItem]]()
     var all_entries = listdir(dir_path)
     

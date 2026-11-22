@@ -8,7 +8,7 @@ from .journal import Journal
 from std.time import perf_counter
 
 
-struct Counter:
+struct __Timer:
     var value: Float64
 
     def __init__(out self):
@@ -85,20 +85,20 @@ def measured_run(
         timeframe: Optional timeframe restricting which events are processed.
     """
     var times = Array[Float64, 5](fill=0.0)
-    var cnt = Counter()
+    var timer = __Timer()
     for evt in feed.play():
         if not timeframe or evt.time in timeframe.value():
-            _ = cnt.elapsed()
+            _ = timer.elapsed()
             var account = broker.sync(evt)
-            times[0] += cnt.elapsed()
+            times[0] += timer.elapsed()
             var signals = strategy.create_signals(evt)
-            times[1] += cnt.elapsed()
+            times[1] += timer.elapsed()
             var orders = trader.create_orders(signals, account, evt)
-            times[2] += cnt.elapsed()
+            times[2] += timer.elapsed()
             broker.place_orders(orders)
-            times[3] += cnt.elapsed()
+            times[3] += timer.elapsed()
             journal.track(account, evt, signals, orders)
-            times[4] += cnt.elapsed()
+            times[4] += timer.elapsed()
         else:
             if evt.time > timeframe.value():
                 break

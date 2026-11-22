@@ -1,3 +1,7 @@
+"""This module contains a demo that demonstrates how to use the roboquant library
+to generate a random walk feed, run a trading strategy, and plot the results
+using matplotlib."""
+
 from std.time import perf_counter
 from roboquant.feed import random_walk
 from roboquant.trader import FlexTrader
@@ -8,7 +12,6 @@ from roboquant.run import run
 from roboquant.strategy import EMACrossOver
 from std.math import round
 from std.python import Python, PythonObject
-
 
 
 def main() raises:

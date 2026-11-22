@@ -40,10 +40,11 @@ struct Position(Copyable, Writable):
     Represents a position in a specific asset, including the size, average price, and market price.
 
     Attributes:
-        asset (Asset): The underlying asset of the position.
-        size (Size): The size of the position.
-        avg_price (Float64): The average price at which the position was acquired.
-        mkt_price (Float64): The current market price of the asset.
+        asset: The underlying asset of the position.
+        size: The size of the position.
+        avg_price: The average price at which the position was acquired.
+        mkt_price: The current market price of the asset.
+        info: Additional information about the position.
     """
 
     var asset: Asset
@@ -61,6 +62,7 @@ struct Position(Copyable, Writable):
 
     @staticmethod
     def zero(asset: Asset) -> Position:
+        """Create a zero position for the provided asset."""
         return Position(asset, Size(), 0, 0)
 
     def __iadd__(mut self, other: Size) -> None :

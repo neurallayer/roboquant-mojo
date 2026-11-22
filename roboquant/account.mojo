@@ -73,6 +73,10 @@ struct Position(Copyable, Writable):
         """The market value amount of the position."""
         return self.asset.value(self.size, self.mkt_price)
 
+    def exposure(self) -> Amount:
+        """The absolute market value amount of the position."""
+        return self.asset.value(abs(self.size), self.mkt_price)
+
     def pnl(self) -> Amount:
         """The unrealized Profit and Loss amount by this position."""
         return self.asset.value(self.size, self.mkt_price - self.avg_price)
@@ -107,10 +111,17 @@ struct Account(Writable, Copyable):
         return self.buying_power.currency
 
     def mkt_value(self) -> Wallet:
-        """The market value of the open positions."""
+        """The total market value of the open positions."""
         var result = Wallet()
         for p in self.positions:
             result.deposit(p.mkt_value())
+        return result^
+
+    def exposure(self) -> Wallet:
+        """The total market value of the open positions."""
+        var result = Wallet()
+        for p in self.positions:
+            result.deposit(p.exposure())
         return result^
 
     def get_position_size(self, asset: Asset) -> Size:
@@ -143,21 +154,30 @@ struct Account(Writable, Copyable):
         return asset.value(self.get_position_size(asset), price)
 
     def has_order(self, asset: Asset) -> Bool:
-        """Return true is there are one or more orders for the provided asset."""
+        """Return true is there are one or more orders for the provided asset.
+        
+        Args:
+            asset: The asset to check for orders.
+
+        Returns:
+            True if there are one or more orders for the provided asset, False otherwise.
+        """
         for ticket in self.orders:
             if ticket.order.asset == asset:
                 return True
         return False
 
     def unrealized_pnl(self) -> Wallet:
-        """The unrealized Profit & Loss by open positions."""
+        """The total unrealized Profit & Loss hold by the open positions."""
         var result = Wallet()
         for p in self.positions:
             result.deposit(p.pnl())
         return result^
 
     def realized_pnl(self) -> Wallet:
-        """The realized Profit & Loss made by executed trades."""
+        """The realized Profit & Loss made by executed trades.
+        Note that these are only the trades since the last sync.
+        """
         return sum[lambda (t: Trade) -> Amount : t.pnl](self.trades)
 
     def equity(self) -> Wallet:
@@ -194,6 +214,17 @@ struct Account(Writable, Copyable):
         writer.write("\n")
 
     def close_orders(self, asset: Asset, limit: Optional[Float64] = None, tif: TIF = TIF.GTC) -> List[Order]:
+        """Create orders to close all open positions for the provided asset.
+        If a limit price is provided, the orders will be limit orders, otherwise market orders.
+        
+        Args:
+            asset: The asset to close positions for.
+            limit: The optional limit price for the orders.
+            tif: The time in force for the orders.
+
+        Returns:
+            A list of orders to close all open positions for the provided asset.
+        """
         var result = List[Order]()
         for pos in self.positions:
             if pos.asset == asset:

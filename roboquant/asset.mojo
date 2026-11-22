@@ -17,6 +17,13 @@ struct AssetType(ImplicitlyCopyable, Writable, Equatable, Hashable):
 
 
 struct Symbol(ImplicitlyCopyable, Writable, Equatable, Hashable):
+    """
+    The Symbol struct represents a unique identifier for a financial instrument.
+    It is a wrapper around a string value that provides a convenient way to work with symbols.
+    
+    Attributes:
+        value (String): The string value of the symbol.
+    """
 
     var value: String
 
@@ -77,20 +84,25 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
 
     @staticmethod
     def Option(symbol: Symbol, currency: Currency = USD) -> Asset:
-        """Create a new Stock with the provided symbol and currency."""
+        """Create a new Option with the provided symbol and currency.
+        This assumes the contract size is 100, as is common for US equity options.
+        """
         var data = __AssetData(symbol, currency, AssetType.OPTION, Size(100))
         return Asset(ArcPointer(data^))
 
     @always_inline
     def symbol(self) -> Symbol:
+        """Return the symbol of the asset."""
         return self.data[].symbol
 
     @always_inline
     def currency(self) -> Currency:
+        """Return the currency of the asset."""
         return self.data[].currency
 
     @always_inline
     def type(self) -> AssetType:
+        """Return the type of the asset."""
         return self.data[].type
 
     def __hash__[T: Hasher](self, mut hasher: T) -> None:

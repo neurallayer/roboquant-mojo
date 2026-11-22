@@ -208,10 +208,20 @@ struct UTCDateTime(Copyable, Movable, Writable):
         return Self.from_timestamp(Timestamp(time._realtime_nanoseconds()))
 
     def same_day(self, other: UTCDateTime, offset: Int = 0) -> Bool:
+        """Check if this datetime is on the same day as another datetime.
+        
+        Args:
+            other: The other datetime to compare against.
+            offset: The offset in hours to apply to this datetime before comparing.
+
+        Returns:
+            True if both datetimes are on the same day, False otherwise.
+        """
         return self.year == other.year and self.month == other.month and self.day == other.day
 
     @staticmethod
     def from_timestamp(t: Timestamp) -> Self:
+        """Convert a Timestamp in nanoseconds to a UTC datetime."""
         return t.to_datetime()
 
     def timestamp(self) -> Timestamp:

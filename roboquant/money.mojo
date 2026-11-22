@@ -204,15 +204,16 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
     var currency: Currency
     var value: Float64
 
+    @staticmethod
+    def zero(currency: Currency = USD) -> Self:
+        """Create a zero amount for the provided currency."""
+        return Self(currency, 0.0)
+
     def __round__(self) -> Amount:
         return Self(self.currency, round(self.value))
 
     def __round__(self, number: Int) -> Amount:
         return Self(self.currency, round(self.value, number))
-
-    @staticmethod
-    def zero(currency: Currency = USD) -> Self:
-        return Self(currency, 0.0)
 
     def write_to(self, mut writer: Some[Writer]):
         writer.write(self.value, "@", self.currency)
@@ -237,6 +238,9 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
 
     def __neg__(self) -> Self:
         return Amount(self.currency, - self.value)
+
+    def __abs__(self) -> Self:
+        return Amount(self.currency, abs(self.value))
 
 struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
     """Contains values of multiple currencies at the same time.

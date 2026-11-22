@@ -75,6 +75,8 @@ trait PricingStrategy(Strategy):
     comptime NO_RATING = 0.0
 
     def get_price_type(self) -> String:
+        """The price type to use for the strategy, for example `CLOSE` or `OPEN`.
+        Structs can overwrite this method to return a different price type."""
         return "DEFAULT"
 
     def create_signals(mut self, event: Event) -> List[Signal]:
@@ -132,6 +134,16 @@ struct EMACrossOver(PricingStrategy):
     var price_type: String
 
     def __init__(out self, fast_period: Int = 13, slow_period: Int = 26, smoothing: Float64 = 2.0, min_n: Optional[Int] = None, price_type: String = "DEFAULT"):
+        """Create a new EMA Cross Over strategy.
+
+        Args:
+            fast_period: The period for the fast EMA.
+            slow_period: The period for the slow EMA.
+            smoothing: The smoothing factor to use.
+            min_n: The minimum number of observations before a signal can be generated.
+            price_type: The price type to use for the strategy.
+        """
+        
         self.history = {}
         self.fast = 1.0 - (smoothing / Float64(fast_period + 1))
         self.slow = 1.0 - (smoothing / Float64(slow_period + 1))

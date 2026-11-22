@@ -38,7 +38,7 @@ trait Broker:
         ...
 
     def sync(mut self, event: Event) -> Account:
-        """ "Sync the broker and return the updated account."""
+        """ "Synchronize with the broker and return the updated account."""
         ...
 
 

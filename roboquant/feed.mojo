@@ -10,7 +10,7 @@ from std.collections import Set
 from std.os import listdir
 from std.pathlib import Path
 from std.logger import Logger
-from max.algorithm import sync_parallelize
+from max.algorithm import parallelize
 from std.memory import ArcPointer
 
 
@@ -303,7 +303,7 @@ struct CSVResult(Copyable):
     var prices: List[Tuple[Timestamp, PriceItem]]
 
 def csv_feed_parallel(dir_path: String, extension: String = ".csv", currency: Currency = USD) raises -> HistoricFeed:
-    """Parse the CSV files in paralell."""
+    """Parse the CSV files in parallel."""
 
     var data = Dict[Timestamp, Dict[Asset, PriceItem]]()
     var file_entries = listdir(dir_path)
@@ -337,7 +337,7 @@ def csv_feed_parallel(dir_path: String, extension: String = ".csv", currency: Cu
             all_result.append(CSVResult(filename,result^))
        
     # parse all files and wait for all to be done.
-    sync_parallelize(__parse, len(all_entries))
+    parallelize(__parse, len(all_entries), min(len(all_entries), 64))
 
     for result in all_result:
         var symbol = result.filename.split(".")[0].upper()

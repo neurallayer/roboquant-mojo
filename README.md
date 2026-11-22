@@ -3,23 +3,22 @@
 A [Mojo](https://www.modular.com/mojo) port of [roboquant](https://github.com/roboquant/roboquant):
 an event-driven backtesting and algo-trading engine.
 
+It is designed to be a **framework** rather than a **ready-to-trade system**: it provides the plumbing for an end-to-end backtest or walk-forward simulation, but you still need to implement your own strategy and broker adapters.
+
+
+Right now it is in a proof-of-concept stage, with only a synthetic and simple CSV feed and simulated broker. 
+The goal is to have a fully functional end-to-end flow that can be extended with real data and brokers.
+
 The engine replays a stream of price events through a small number of
 interchangeable components — a **feed**, a **strategy**, a **trader**, a
-**broker** and a **journal** — and produces a final `Account` with positions,
-trades, cash and P&L.
+**broker** and a **journal**.
 
 ```mermaid
 flowchart LR
     F[Feed] -->|Event| S[Strategy]
     S -->|"List[Signal]"| T[Trader]
     T -->|"List[Order]"| B[Broker]
-    B -->|Account| T
-    B --> J[Journal]
-    R["run()"] -.orchestrates.-> F
-    R -.-> S
-    R -.-> T
-    R -.-> B
-    R -.-> J
+    B -->|"Account"| J[Journal]
 ```
 
 ---
@@ -28,7 +27,6 @@ flowchart LR
 
 - [roboquant\_mojo](#roboquant_mojo)
   - [Contents](#contents)
-  - [Requirements](#requirements)
   - [Install \& run](#install--run)
   - [Quick start](#quick-start)
   - [Architecture](#architecture)
@@ -50,30 +48,20 @@ flowchart LR
 
 ---
 
-## Requirements
-
-| Dependency | Version     | Purpose                             |
-| ---------- | ----------- | ----------------------------------- |
-| Mojo       | `>=1.0,<2`  | Language & runtime                  |
-| decimo     | `>=0.14.0`  | `Decimal128` used for order/position sizes |
-| morrow     | `>=0.7.0`   | ISO-8601 parsing, timestamps & time zones |
-
-All three are declared in [`pixi.toml`](./pixi.toml) and installed into a
-[pixi](https://pixi.sh) environment.
-
 ## Install & run
 
 ```bash
 # Install (or refresh) the pixi environment
 pixi install
 
-# Run the bundled demo backtest
-pixi run mojo run roboquant/main.mojo
+# Run the bundled tests
+pixi run test
 ```
 
-Because Mojo resolves imports relative to the file being compiled, always run
-modules from inside the `roboquant/` folder (as above) so that the sibling
-imports (`from feed import ...`, `from money import ...`) resolve.
+The modules inside `roboquant/` use relative imports (`from .feed import ...`)
+and are imported as a package (`from roboquant.feed import ...`). The `pixi`
+tasks above precompile them into `lib/roboquant.mojoc` and add that directory to
+the module path with `-I lib`.
 
 The demo generates ~26 years of 10-minute random-walk bars, runs a full-history
 backtest and then a 10-step walk-forward simulation:
@@ -89,25 +77,27 @@ total bars:  <N>
 A minimal end-to-end backtest wires the stock implementations together:
 
 ```mojo
-from feed import RandomWalkFeed
-from strategy import EMACrossOver
-from trader import FlexTrader
-from broker import SimBroker
-from journal import Printer
-from run import run
+from roboquant.feed import random_walk
+from roboquant.strategy import EMACrossOver
+from roboquant.trader import FlexTrader
+from roboquant.broker import SimBroker
+from roboquant.journal import EquityTracker
+from roboquant.run import run
 
 def main() raises:
-    var feed = RandomWalkFeed(start="2020-01-01", end="2021-01-01", step_seconds=3600.0)
-
-    var acc = run(
-        feed,
-        EMACrossOver(),      # strategy
-        FlexTrader(),        # trader
-        SimBroker(),         # broker (starts with 100k USD)
-        Printer(),           # journal
+    # 1-hour bars over one year for 8 synthetic tickers
+    var feed = random_walk(
+        start="2025-01-01", end="2026-01-01", step_seconds=3600.0, n_assets=8
     )
 
-    print("equity:", acc.equity())
+    var strategy = EMACrossOver()   # strategy
+    var trader = FlexTrader()       # trader
+    var broker = SimBroker()        # broker (starts with 100k USD)
+    var journal = EquityTracker()   # journal
+
+    run(feed, strategy, trader, broker, journal)
+
+    print("performance:", journal.get_performance() * 100.0, "%")
 ```
 
 Every component is a `trait`, so you only need to implement the relevant
@@ -176,7 +166,7 @@ Notes:
 
 - `Currency` — e.g. `Currency.USD`, `Currency.EUR`.
 - `Amount` — a `Float64` value in a single currency. Supports rounding and
-  `convert_to(currency, time)` (FX conversion is not yet implemented).
+  `convert_to(currency, time)`, which converts through the base currency.
 - `Wallet` — a `Dict[Currency, Float64]` holding multiple currencies at once,
   with `deposit`/`withdraw`, `convert_to` and `equity`-style aggregation.
 
@@ -324,22 +314,24 @@ so they are meant to be read, not used as a pass/fail gate.
 
 ## Implementation status
 
-The engine is now complete for the synthetic end-to-end flow: a full-history
-backtest plus a walk-forward simulation both run to completion. The gaps that
-were previously tracked here are all resolved:
+The engine is complete for the synthetic end-to-end flow: a full-history
+backtest plus a walk-forward simulation both run to completion through every
+component (`RandomWalkFeed` → `EMACrossOver` → `FlexTrader` → `SimBroker` →
+`Printer`). The building blocks the flow relies on are in place:
 
-- **FX conversion** — `Amount.convert_to` converts through the base currency and
-  `Wallet.convert_to` aggregates a multi-currency book.
-- **`Bar` construction** — OHLCV values are derived from the bar's own
-  open/high/low/close/volume instead of being copied from a single open price.
-- **`Quote` volume** — `get_volume` reads the quote's size field, so it no
-  longer indexes past the end of the price array.
-- **`Timeframe(start: String, end: String)`** — the string constructor assigns
-  `start` and `end` independently.
+- **Time & money** — `Timestamp`, `Timeframe`, `Currency`, `Amount` and
+  `Wallet`, with FX conversion via `convert_to`.
+- **Assets & orders** — `Asset`/`AssetType` and exact-decimal `Size`
+  (`Decimal128`) orders with `TIF`, limits, `cancel()` and `modify()`.
+- **Account bookkeeping** — `Trade`, `Position` and `Account` expose realized /
+  unrealized P&L, market value, equity and buying power.
+- **Feeds** — `Event`, `Bar`, `Quote` and the seeded `RandomWalkFeed`.
+- **Pluggable components** — `Strategy`/`BarStrategy`, `Trader`, `Broker` and
+  `Journal` are all traits, plus `run()` as the single orchestrator.
 - **`common.mojo`** — holds the shared helpers (parsing, formatting, RNG) reused
   by the other modules.
 
-Remaining work:
+Not implemented yet:
 
 - **Real data feeds & brokers** — only the synthetic `RandomWalkFeed` and
   `SimBroker` exist today; adapters for live or historical market data and for

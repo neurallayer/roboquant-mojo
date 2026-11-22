@@ -19,8 +19,8 @@ trait Trader:
         """Create orders from strategy signals.
 
         Args:
-            signals: Signals to convert into orders.
-            account: Account used to check positions and buying power.
+            signals: Signals from the strategy to convert into orders.
+            account: Account that can be used to check positions and buying power.
             event: Current event providing prices and the timestamp.
 
         Returns:

@@ -30,6 +30,7 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
     def __init__(out self, start: String, end: String, inclusive: Bool = False) raises:
         self.start = Timestamp.from_iso(start)
         self.end = Timestamp.from_iso(end)
+        assert self.end >= self.start
         self.inclusive = inclusive
 
     def __init__(out self, start: Timestamp, end: Timestamp, inclusive: Bool = False):
@@ -40,6 +41,29 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
     @staticmethod
     def empty() -> Self:
         return Timeframe(Timestamp.MIN, Timestamp.MIN, False)
+
+    def duration(self) -> Duration:
+        return Duration(nanoseconds=self.end - self.start)
+
+    def split(self, duration: Duration) -> List[Timeframe]:
+        """
+        Split the Timeframe into smaller Timeframes of the specified duration.
+
+        Args:
+            duration: The duration of each smaller Timeframe.
+
+        Returns:
+            A list of smaller Timeframes.
+        """
+        var result: List[Timeframe] = List[Timeframe]()
+        var start = self.start
+        var end = start + duration
+        while end < self.end:
+            result.append(Timeframe(start, end, False))
+            start = end
+            end = start + duration
+        result.append(Timeframe(start, self.end, self.inclusive))
+        return result^
 
     def split(self, n: Int) -> List[Timeframe]:
         """
@@ -377,6 +401,9 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def __add__(self, other_ns: Int) -> Timestamp:
         return Timestamp(self.nanoseconds + other_ns)
 
+    def __add__(self, other:Duration) -> Timestamp:
+        return Timestamp(self.nanoseconds + other.nanoseconds)
+
     def __iadd__(mut self, other_ns: Int):
         self.nanoseconds += other_ns
 
@@ -436,3 +463,13 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
         """
         var dt = UTCDateTime.from_timestamp(self)
         return "{}".format(dt)
+
+
+struct Duration(Copyable):
+    """Duration in nanoseconds."""
+
+    var nanoseconds: Int
+
+    def __init__(out self, days: Int = 0, hours: Int = 0, minutes: Int = 0, seconds: Int = 0, nanoseconds: Int = 0):
+        """Create a Duration from the specified components."""
+        self.nanoseconds = days * 86_400_000_000_000 + hours * 3_600_000_000_000 + minutes * 60_000_000_000 + seconds * 1_000_000_000 + nanoseconds

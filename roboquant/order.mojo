@@ -14,7 +14,7 @@ comptime Info = Dict[String, String]
 @fieldwise_init
 struct TIF(ImplicitlyCopyable, Writable, Equatable):
     """
-    Until Mojo supports enums, we use this struct to represent the Time In Force (TIF) of an order.
+    Until Mojo supports enums, this struct is used to represent the Time In Force (TIF) of an order.
     TIF specifies how long an order remains active before it is executed or expires.
 
     Attributes:
@@ -40,7 +40,7 @@ struct TIF(ImplicitlyCopyable, Writable, Equatable):
 
 struct NewOrder(Copyable, Writable):
     """
-    A  new order represents a request to buy or sell a specific asset in the market.
+    A new order represents a request to buy or sell a specific asset in the market.
 
     Attributes:
         asset: The underlying asset of the order.
@@ -65,6 +65,8 @@ struct NewOrder(Copyable, Writable):
     """Time In Force, either DAY or GTC."""
 
     var info: Info
+    """Additional info included in the order. Typically only used by a broker implementation.
+    """
 
     def __init__(out self, asset: Asset, size: Size, limit: Optional[Float64], tif: TIF, var info: Info = Info()):
         self.asset = asset
@@ -158,7 +160,7 @@ struct OrderTicket(Equatable & Hashable & Copyable):
             return self.order.asset.value(self.remaining(), price)
 
     def cancel(self) -> CancelOrder:
-        """Create a cancellation order."""
+        """Create a cancellation order for this order."""
         return CancelOrder(self.id)
 
     def modify(self, size: Optional[Size], limit: Optional[Float64]) -> ModifyOrder:

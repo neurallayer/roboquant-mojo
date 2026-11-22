@@ -15,6 +15,9 @@ struct __Timer:
         self.value = perf_counter()
 
     def elapsed(mut self) -> Float64:
+        """The elapsed time since the last call to this method.
+        The first call returns the elapsed time since the timer was created.
+        """
         var old_time = self.value
         self.value = perf_counter()
         return self.value - old_time
@@ -29,7 +32,8 @@ def run(
         mut journal: Some[Journal],
         timeframe: Optional[Timeframe] = None
     ):
-    """Run the trading loop over all events produced by the feed.
+    """Run the trading loop over all events produced by the feed optionally
+    restricted to the supplied timeframe.
 
     For every event, the broker is synced with the event, the strategy
     creates signals, the trader converts those signals into orders, the
@@ -67,7 +71,8 @@ def measured_run(
         mut journal: Some[Journal],
         timeframe: Optional[Timeframe] = None
     ) -> Dict[String, Float64]:
-    """Run the trading loop over all events produced by the feed.
+    """Run the trading loop over all events produced by the feed. It also measures
+    the time spend at each step. See also `run`.
 
     For every event, the broker is synced with the event, the strategy
     creates signals, the trader converts those signals into orders, the
@@ -83,6 +88,9 @@ def measured_run(
         broker: The broker that syncs the account and places orders.
         journal: The journal that records account, signal and order data.
         timeframe: Optional timeframe restricting which events are processed.
+
+    Returns:
+        The accumulated time spent in each of the five stages of the trading loop.
     """
     var times = Array[Float64, 5](fill=0.0)
     var timer = __Timer()

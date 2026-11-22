@@ -32,6 +32,7 @@ struct Trade(Copyable, Writable):
     var time: Timestamp
 
     def value(self) -> Amount:
+        """Return the total value amount of the trade."""
         return self.asset.value(self.size, self.price)
 
 

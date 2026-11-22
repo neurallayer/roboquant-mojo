@@ -282,15 +282,18 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
             self.balances[k] = v + item.value
 
     def is_single_currency(self, currency: Currency) -> Bool:
+        """Check if the wallet only contains the provided currency (or is empty)."""
         return (len(self.balances) == 0) or ((len(self.balances) == 1) and (currency in self.balances))
 
     def withdraw(mut self, wallet: Wallet):
+        """Withdraw a wallet from this wallet."""
         for item in wallet.balances.items():
             var k = item.key
             var v = self.balances.get(k, 0.0)
             self.balances[k] = v - item.value
 
     def withdraw(mut self, amount: Amount):
+        """Withdraw an amount from the wallet."""
         var k = amount.currency
         var v = self.balances.get(k, 0.0)
         self.balances[k] = v - amount.value
@@ -339,6 +342,8 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
 
     @inline(.always)
     def get(self, currency: Currency) -> Amount:
+        """Get the amount for a specific currency.
+        If the currency is not present, a zero amount is returned."""
         var value = self.balances.get(currency, 0.0)
         return Amount(currency, value) 
 

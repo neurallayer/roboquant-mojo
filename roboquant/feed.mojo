@@ -19,6 +19,10 @@ comptime logger = Logger()
 
 @fieldwise_init
 struct Candle(Copyable):
+    """A Candle represents the price movement of an asset over a specific period.
+    It contains the open, high, low, close, and volume values for that period.
+    """
+
     var open: Float64
     var high: Float64
     var low: Float64
@@ -56,6 +60,8 @@ struct Candle(Copyable):
 
 @fieldwise_init
 struct TradePrice(Copyable):
+    """A TradePrice represents the price and volume of a single trade."""
+
     var price: Float64
     var volume: Float64
 
@@ -68,6 +74,8 @@ struct TradePrice(Copyable):
 
 @fieldwise_init
 struct Quote(Copyable):
+    """A quote represents the best bid and ask prices for an asset at a specific moment in time."""
+
     var ask_price: Float64
     var ask_volume: Float64
     var bid_price: Float64
@@ -99,6 +107,9 @@ struct OrderBook(Copyable):
 
 @fieldwise_init
 struct PriceItem(Copyable):
+    """A PriceItem is a wrapper around the different types of price data that can be present in an event.
+    Currently there is support for Candle, Quote, and TradePrice.
+    """
     
     var item: Variant[Candle, Quote, TradePrice]
 
@@ -195,6 +206,14 @@ struct HistoricFeed:
 
 
     def to_timeseries(self, asset: Asset) -> TimeSeries: 
+        """Convert the feed to a TimeSeries for the specified asset.
+
+        Args:
+            asset: The asset for which to create the TimeSeries.
+
+        Returns:
+            A TimeSeries containing the price data for the specified asset.
+        """
         var l = len(self.events)
         var tl = List[Timestamp](capacity=l)
         var prices = List[Float64](capacity=l)
@@ -205,10 +224,9 @@ struct HistoricFeed:
         return TimeSeries.univariate(asset.symbol().value, tl^, prices^)
 
 
-
 def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int = 10, type: String = "candle") raises -> HistoricFeed:
     """
-    A Random-Walk generates a sequence of Events with Candle or Trade price data for testing purposes.
+    A Random-Walk generates a sequence of `Events` with `Candle` or `Trade` price data.
     It simulates a random walk in asset prices over a specified time range and step interval.
     """
 

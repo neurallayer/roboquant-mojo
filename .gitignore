@@ -3,7 +3,7 @@
 !.pixi/config.toml
 scratch/*
 *.mojoc
-lib/*
+lib/*.mojoc
 .idea/*
 .env
 /test_run*

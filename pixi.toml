@@ -1,7 +1,7 @@
 [workspace]
 channels = ["https://conda.modular.com/max", "https://repo.prefix.dev/modular-community", "conda-forge"]
 name = "roboquant"
-platforms = ["osx-arm64"]
+platforms = ["osx-arm64", "linux-64"]
 version = "0.2.0"
 
 [tasks]

@@ -29,23 +29,29 @@ struct Signal(Writable, Copyable):
         self.type = type
 
     def is_exit(self) -> Bool:
+        """Returns true if this signal is an exit signal."""
         return self.type == SignalType.ENTRY_EXIT or self.type == SignalType.EXIT
 
     def is_entry(self) -> Bool:
+        """Returns true if this signal is an entry signal."""
         return self.type == SignalType.ENTRY_EXIT or self.type == SignalType.ENTRY
 
     @staticmethod
     def buy(var asset: Asset) -> Signal:
+        """Create a buy signal for the provided asset."""
         return Self(asset, 1.0)
 
     @staticmethod
     def sell(var asset: Asset) -> Signal:
+        """Create a sell signal for the provided asset."""
         return Self(asset, -1.0)
 
     def is_buy(self) -> Bool:
+        """Returns true if this signal is a buy signal."""
         return self.rating > 0
 
     def is_sell(self) -> Bool:
+        """Returns true if this signal is a sell signal."""
         return self.rating < 0
 
 
@@ -69,6 +75,9 @@ trait Strategy:
 
 
 trait PricingStrategy(Strategy):
+    """A pricing strategy that uses the price of an asset to generate signals.
+    The price is obtained from the event using the price type returned by the
+    `get_price_type` method. The default price type is `DEFAULT`."""
 
     comptime BUY = 1.0
     comptime SELL = -1.0
@@ -127,7 +136,7 @@ struct EMACrossOver(PricingStrategy):
     if the one crosses the other moving overage.
     """
 
-    var history: Dict[Asset, Tuple[Int, Float64, Float64]]
+    var history: Dict[Asset, __EMACalc]
     var min_n: Int
     var fast: Float64
     var slow: Float64
@@ -154,21 +163,42 @@ struct EMACrossOver(PricingStrategy):
         return self.price_type
 
     def create_rating(mut self, asset: Asset, price: Float64) -> Float64:
-        var (n, old_ema_fast, old_ema_slow) = self.history.get(asset, (0, price, price))
-        n += 1
+        try:
+            ref calc = self.history[asset]
+            var old = calc.is_above()
+           
+            # Calculate new EMA values
+            calc.update(price)
+           
+            if calc.n >= self.min_n:
+                var new = calc.is_above()
+                if old != new:
+                    return self.SELL if new else self.BUY
 
-        var f, s = self.fast, self.slow
-
-        # Calculate new EMA values
-        var new_ema_fast = f * old_ema_fast + (1.0 - f) * price
-        var new_ema_slow = s * old_ema_slow + (1.0 - s) * price
-
-        self.history[asset] = (n, new_ema_fast, new_ema_slow)
-   
-        if n >= self.min_n:
-            if new_ema_fast <= new_ema_slow and old_ema_fast > old_ema_slow:
-                return self.SELL
-            elif new_ema_fast >= new_ema_slow and old_ema_fast < old_ema_slow:
-                return self.BUY
+        except:
+            self.history[asset] = __EMACalc(fast=self.fast, slow=self.slow, price=price)
 
         return self.NO_RATING
+
+struct __EMACalc:
+    var n: Int
+    var fast: Float64
+    var slow: Float64
+    var ema_fast: Float64
+    var ema_slow: Float64
+
+    def __init__(out self, fast: Float64, slow: Float64, price: Float64):
+        self.n = 0
+        self.fast = fast
+        self.slow = slow
+        self.ema_fast = price
+        self.ema_slow = price
+
+    def is_above(self) -> Bool:
+        return self.ema_fast > self.ema_slow
+
+    def update(mut self, price: Float64):
+        self.n += 1
+        self.ema_fast = self.fast * self.ema_fast + (1.0 - self.fast) * price
+        self.ema_slow = self.slow * self.ema_slow + (1.0 - self.slow) * price
+       

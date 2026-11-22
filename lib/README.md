@@ -1,0 +1,1 @@
+This directory contains the precompiled Mojo code for the roboquant framework. The source code is in the `src/` directory, and the compiled code is in the `lib/` directory.The precompiled code is used to speed up the execution of the framework.xs

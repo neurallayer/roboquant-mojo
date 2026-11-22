@@ -1,5 +1,5 @@
 from .asset import Asset
-from .time import Timestamp, Timeframe, TimeSeries, UTCDateTime
+from .time import Timestamp, Timeframe, TimeSeries, UTCDateTime, Duration
 from .order import Size
 from .money import Currency, USD
 
@@ -224,7 +224,7 @@ struct HistoricFeed:
         return TimeSeries.univariate(asset.symbol().value, tl^, prices^)
 
 
-def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int = 10, type: String = "candle") raises -> HistoricFeed:
+def random_walk(start: String, end: String, step: Duration, n_assets: Int = 10, type: String = "candle") raises -> HistoricFeed:
     """
     A Random-Walk generates a sequence of `Events` with `Candle` or `Trade` price data.
     It simulates a random walk in asset prices over a specified time range and step interval.
@@ -238,14 +238,13 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
             symbol += chr(Int(n) + ord('A'))
         symbols.add(symbol)
 
-    var step_ns = Int(step_seconds * 1_000_000_000.0)
     var assets = {Asset.Stock(symbol) for symbol in symbols}
     var time = Timestamp.from_iso(start)
     var stop = Timestamp.from_iso(end)
     if stop <= time:
         raise Error("end has to be after start")
 
-    var capacity = Int((stop - time) / step_ns) + 1
+    var capacity = ((stop - time).nanoseconds // step.nanoseconds) + 1
     var events = List[Event](capacity=capacity)
 
     # Select a different start price for each asset
@@ -266,7 +265,7 @@ def random_walk(start: String, end: String, step_seconds: Float64, n_assets: Int
 
         var evt = Event(time, items^)
         events.append(evt^)
-        time += step_ns
+        time += step
         if time >= stop:
             break
 

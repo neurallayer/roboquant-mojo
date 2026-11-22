@@ -7,7 +7,7 @@ from roboquant.feed import random_walk
 from roboquant.trader import FlexTrader
 from roboquant.broker import SimBroker
 from roboquant.journal import EquityTracker
-from roboquant.time import Timeframe
+from roboquant.time import Timeframe, Duration
 from roboquant.run import run
 from roboquant.strategy import EMACrossOver
 from std.math import round
@@ -15,7 +15,7 @@ from std.python import Python, PythonObject
 
 
 def main() raises:
-    var feed = random_walk(start="2025-01-01",end="2026-01-01", step_seconds = 3600.0 * 24.0, n_assets=8)
+    var feed = random_walk(start="2025-01-01",end="2026-01-01", step = Duration(days=1), n_assets=8)
 
     var plt = Python.import_module("matplotlib.pyplot")
     var fig_axs = plt.subplots(4, 2, figsize=[12,8])

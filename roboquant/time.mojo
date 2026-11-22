@@ -43,7 +43,7 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
         return Timeframe(Timestamp.MIN, Timestamp.MIN, False)
 
     def duration(self) -> Duration:
-        return Duration(nanoseconds=self.end - self.start)
+        return self.end - self.start
 
     def split(self, duration: Duration) -> List[Timeframe]:
         """
@@ -78,11 +78,14 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
         var result:  List[Timeframe] = List[Timeframe](capacity=n)
         var start = self.start
         var step = (self.end - self.start) / n
+        print(self.end - self.start, step)
         for idx in range(n):
             var end = start + step
-            if end > self.end:
+            var inclusive = False 
+            if idx == n-1:
                 end = self.end
-            var inclusive = False if idx < n-1 else self.inclusive
+                inclusive = self.inclusive
+
             var tf = Timeframe(start, end, inclusive)
             result.append(tf)
             start = end
@@ -395,22 +398,19 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
     def __ge__(self, other: Timestamp) -> Bool:
         return self.nanoseconds >= other.nanoseconds
 
-    def __sub__(self, other: Timestamp) -> Int:
-        return self.nanoseconds - other.nanoseconds
-
-    def __add__(self, other_ns: Int) -> Timestamp:
-        return Timestamp(self.nanoseconds + other_ns)
+    def __sub__(self, other: Timestamp) -> Duration:
+        return Duration(nanoseconds=self.nanoseconds - other.nanoseconds)
 
     def __add__(self, other:Duration) -> Timestamp:
         return Timestamp(self.nanoseconds + other.nanoseconds)
 
-    def __iadd__(mut self, other_ns: Int):
-        self.nanoseconds += other_ns
+    def __iadd__(mut self, other: Duration):
+        self.nanoseconds += other.nanoseconds
 
-    def same_day(self,other: Timestamp, offset_minutes:Int = 0) -> Bool:
+    def same_day(self,other: Timestamp, offset:Duration = Duration()) -> Bool:
         """Check if two timestamps are on the same day given the offset."""
-        var dt1 = self + offset_minutes * 60_000_000_000 
-        var dt2 = other + offset_minutes * 60_000_000_000
+        var dt1 = self + offset
+        var dt2 = other + offset
         return dt1.to_datetime().same_day(dt2.to_datetime())
 
 
@@ -465,7 +465,7 @@ struct Timestamp(ImplicitlyCopyable, Comparable, TrivialRegisterPassable, Equata
         return "{}".format(dt)
 
 
-struct Duration(Copyable):
+struct Duration(Copyable, Writable, Equatable, Hashable, RegisterPassable):
     """Duration in nanoseconds."""
 
     var nanoseconds: Int
@@ -473,3 +473,27 @@ struct Duration(Copyable):
     def __init__(out self, days: Int = 0, hours: Int = 0, minutes: Int = 0, seconds: Int = 0, nanoseconds: Int = 0):
         """Create a Duration from the specified components."""
         self.nanoseconds = days * 86_400_000_000_000 + hours * 3_600_000_000_000 + minutes * 60_000_000_000 + seconds * 1_000_000_000 + nanoseconds
+
+    def __truediv__(self, other: Int) -> Duration:
+        return Duration(nanoseconds = self.nanoseconds // other)
+
+    def write_to(self, mut writer: Some[Writer]):
+        var ns = self.nanoseconds
+        if ns >= 86_400_000_000_000:
+            writer.write("{}d".format(self.nanoseconds // 86_400_000_000_000))
+            ns = ns % 86_400_000_000_000
+        if ns >= 3_600_000_000_000:
+            writer.write("{}h".format(ns // 3_600_000_000_000))
+            ns = ns % 3_600_000_000_000
+        if ns >= 60_000_000_000:
+            writer.write("{}m".format(ns // 60_000_000_000))
+            ns = ns % 60_000_000_000
+        if ns >= 1_000_000_000:
+            writer.write("{}s".format(ns // 1_000_000_000))
+            ns = ns % 1_000_000_000
+        if ns > 0:
+            writer.write("{}ns".format(ns))
+
+
+
+

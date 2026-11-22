@@ -11,7 +11,7 @@ from roboquant.feed import random_walk, HistoricFeed
 from roboquant.trader import FlexTrader
 from roboquant.broker import SimBroker
 from roboquant.journal import EquityTracker
-from roboquant.time import Timeframe
+from roboquant.time import Timeframe, Duration
 from roboquant.run import measured_run
 from roboquant.strategy import EMACrossOver
 from std.math import round
@@ -41,7 +41,7 @@ def _measure_run(feed: HistoricFeed, tf: Optional[Timeframe]) raises:
 def test_run() raises:
     # 10-minute bars for 26 years
     var feed = random_walk(
-        start="2000-01-01", end="2026-01-01", step_seconds=600.0, n_assets=10
+        start="2000-01-01", end="2026-01-01", step=Duration(minutes=10), n_assets=10
     )
 
     # Run over the entire feed timeframe

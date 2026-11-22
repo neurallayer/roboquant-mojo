@@ -470,7 +470,7 @@ struct Duration(Copyable, Writable, Equatable, Hashable, RegisterPassable):
 
     var nanoseconds: Int
 
-    def __init__(out self, days: Int = 0, hours: Int = 0, minutes: Int = 0, seconds: Int = 0, nanoseconds: Int = 0):
+    def __init__(out self, *, days: Int = 0,hours: Int = 0, minutes: Int = 0, seconds: Int = 0, nanoseconds: Int = 0):
         """Create a Duration from the specified components."""
         self.nanoseconds = days * 86_400_000_000_000 + hours * 3_600_000_000_000 + minutes * 60_000_000_000 + seconds * 1_000_000_000 + nanoseconds
 

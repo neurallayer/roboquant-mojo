@@ -15,14 +15,17 @@ from roboquant.time import Timeframe
 from roboquant.run import run
 from roboquant.strategy import EMACrossOver
 from std.math import round
-from std.os.path import expanduser
+from std.os.path import expanduser, exists
 
 
-def test_csv_basic() raises:
+def test_csv_basic() raises:  
+    var dir = expanduser("~/data/daily/us/nasdaq stocks/1")
+    if not exists(dir):
+        print("skipping test, no data available")
+        return
+
     var start = perf_counter()
-    var feed = csv_feed(
-        expanduser("~/data/daily/us/nasdaq stocks/1"), extension=".txt"
-    )
+    var feed = csv_feed(dir, extension=".txt")
     var end = perf_counter()
     print(
         feed.timeframe(),
@@ -33,11 +36,14 @@ def test_csv_basic() raises:
     )
 
 
-def test_csv_parallel() raises:
+def test_csv_parallel() raises:   
+    var dir = expanduser("~/data/daily/us/nasdaq stocks/1")
+    if not exists(dir):
+        print("skipping test, no data available")
+        return
+
     var start = perf_counter()
-    var feed = csv_feed_parallel(
-        expanduser("~/data/daily/us/nasdaq stocks/1"), extension=".txt"
-    )
+    var feed = csv_feed_parallel(dir, extension=".txt")
     var end = perf_counter()
     print(
         feed.timeframe(),

@@ -77,8 +77,7 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
         """
         var result:  List[Timeframe] = List[Timeframe](capacity=n)
         var start = self.start
-        var step = (self.end - self.start) / n
-        print(self.end - self.start, step)
+        var step = (self.end - self.start) // n
         for idx in range(n):
             var end = start + step
             var inclusive = False 
@@ -471,10 +470,18 @@ struct Duration(Copyable, Writable, Equatable, Hashable, RegisterPassable):
     var nanoseconds: Int
 
     def __init__(out self, *, days: Int = 0,hours: Int = 0, minutes: Int = 0, seconds: Int = 0, nanoseconds: Int = 0):
-        """Create a Duration from the specified components."""
+        """Create a Duration from the specified components. They will all be converted to nanoseconds.
+        
+        Args:
+            days: The number of days.
+            hours: The number of hours.
+            minutes: The number of minutes.
+            seconds: The number of seconds.
+            nanoseconds: The number of nanoseconds.
+        """
         self.nanoseconds = days * 86_400_000_000_000 + hours * 3_600_000_000_000 + minutes * 60_000_000_000 + seconds * 1_000_000_000 + nanoseconds
 
-    def __truediv__(self, other: Int) -> Duration:
+    def __floordiv__(self, other: Int) -> Duration:
         return Duration(nanoseconds = self.nanoseconds // other)
 
     def write_to(self, mut writer: Some[Writer]):

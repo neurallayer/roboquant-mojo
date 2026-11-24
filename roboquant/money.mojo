@@ -330,6 +330,9 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
         result.deposit(amount)
         return result^
 
+    def __contains__(self, currency: Currency) -> Bool:
+        return self.balances.__contains__(currency)
+
     def convert_to(self, currency: Currency, time: Timestamp, converter: Some[CurrencyConverter]) raises -> Amount:
         return converter.convert(self, currency, time)
 

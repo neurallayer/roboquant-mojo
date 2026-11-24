@@ -186,9 +186,7 @@ struct Account(Writable, Copyable):
     def equity(self) -> Wallet:
         """The total equity of the account, which is the sum of cash and
         market value of positions."""
-        var result = self.mkt_value()
-        result.deposit(self.cash)
-        return result^
+        return self.mkt_value() + self.cash
 
     def write_to(self, mut writer: Some[Writer]):
         writer.write("last update : ", self.last_update.format())

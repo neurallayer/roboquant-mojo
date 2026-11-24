@@ -91,12 +91,12 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
         return Asset(ArcPointer(data^))
 
     @always_inline
-    def symbol(self) -> Symbol:
+    def symbol(self) -> ref[self.data[].symbol] Symbol:
         """Return the symbol of the asset."""
         return self.data[].symbol
 
     @always_inline
-    def currency(self) -> Currency:
+    def currency(self) -> ref[self.data[].currency] Currency:
         """Return the currency of the asset."""
         return self.data[].currency
 

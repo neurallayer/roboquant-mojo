@@ -15,7 +15,7 @@ def test_timeframe() raises:
 def test_duration() raises:
     var d = Duration(days=10, hours=2)
     assert_equal(d.nanoseconds, 10 * 24 * 3600 * 1_000_000_000 + 2 * 3600 * 1_000_000_000)
-    assert_equal("{d}", "10d2h")
+    assert_equal(String(d), "10d2h")
  
 def main() raises:
     TestSuite.discover_tests[__functions_in_module()]().run()

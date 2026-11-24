@@ -50,7 +50,7 @@ def run(
         journal: The journal that records account, signal and order data.
         timeframe: Optional timeframe restricting which events are processed.
     """
-    for evt in feed.play():
+    for evt in feed.play(timeframe):
         if not timeframe or evt.time in timeframe.value():
             var account = broker.sync(evt)
             var signals = strategy.create_signals(evt)

@@ -1,7 +1,7 @@
 from .asset import Asset
 from .time import Timestamp, Timeframe, TimeSeries, UTCDateTime, Duration
 from .order import Size
-from .money import Currency, USD
+from .money import Currency
 
 from std.utils import Variant, BlockingScopedLock, BlockingSpinLock
 from std.random import random_float64, randn_float64, seed, random_ui64, shuffle
@@ -280,7 +280,7 @@ def random_walk(
     step: Duration,
     n_assets: Int = 10,
     type: String = "candle",
-    currency: Currency = USD
+    currency: Currency = Currency.USD,
 ) raises -> HistoricFeed:
     """
     A Random-Walk generates a sequence of `Events` with `Candle` or `Trade` price data.
@@ -364,7 +364,7 @@ def __parse_stooq_file(filename: String) -> List[Tuple[Timestamp, PriceItem]]:
 
 
 def csv_feed(
-    dir_path: String, extension: String = ".csv", currency: Currency = USD
+    dir_path: String, extension: String = ".csv", currency: Currency = Currency.USD
 ) raises -> HistoricFeed:
     """Parse the CSV files in a directory and return a HistoricFeed.
 
@@ -398,7 +398,7 @@ struct CSVResult(Copyable):
 
 
 def csv_feed_parallel(
-    dir_path: String, extension: String = ".csv", currency: Currency = USD
+    dir_path: String, extension: String = ".csv", currency: Currency = Currency.USD
 ) raises -> HistoricFeed:
     """Parse the CSV files in parallel."""
 

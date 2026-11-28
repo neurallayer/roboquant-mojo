@@ -1,4 +1,4 @@
-from .money import Currency, Amount, USD
+from .money import Currency, Amount
 from .order import Size
 from std.hash import Hasher
 from std.memory import ArcPointer
@@ -65,7 +65,7 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
     var data: ArcPointer[__AssetData]
    
     @staticmethod
-    def Stock(symbol: Symbol, currency: Currency = USD) -> Asset:
+    def Stock(symbol: Symbol, currency: Currency) -> Asset:
         """Create a new Stock with the provided symbol and currency."""
         var data = __AssetData(symbol, currency, AssetType.STOCK, Size.one())
         return Asset(ArcPointer(data^))
@@ -83,11 +83,16 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
         return Asset(ArcPointer(data^))
 
     @staticmethod
-    def Option(symbol: Symbol, currency: Currency = USD) -> Asset:
-        """Create a new Option with the provided symbol and currency.
-        This assumes the contract size is 100, as is common for US equity options.
+    def Option(occ_symbol: Symbol, currency: Currency, size: Size = Size(100)) -> Asset:
         """
-        var data = __AssetData(symbol, currency, AssetType.OPTION, Size(100))
+        Create a new Option with the provided symbol and currency.
+        
+        ```mojo
+        var option1 = Asset.Option("SPX141122P01950000", Currency.USD)
+        var option2 = Asset.Option("AAPL7 131101C00470000", Currency.USD, Size(10))
+        ```
+        """
+        var data = __AssetData(occ_symbol, currency, AssetType.OPTION, size)
         return Asset(ArcPointer(data^))
 
     @always_inline
@@ -126,7 +131,4 @@ struct Asset(ImplicitlyCopyable, Writable, KeyElement, Equatable, Hashable):
             case AssetType.OPTION: writer.write("Option:")
             case AssetType.FOREX: writer.write("Forex:")
             case AssetType.CRYPTO: writer.write("Crypto:")
-        writer.write(self.symbol().value,":",self.currency().code)
-
-
-
+        writer.write(self.symbol(),":",self.currency())

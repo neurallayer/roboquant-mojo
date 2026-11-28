@@ -7,26 +7,32 @@ from std.logger import Logger
 
 comptime logger = Logger()
 
-comptime USD = Currency("USD")
-comptime EUR = Currency("EUR")
-comptime GBP = Currency("GBP")
-comptime JPY = Currency("JPY")
 
 struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
     """
-    Currency represents a specific currency used in financial transactions.
-    It is uniquely identified by its code, which is a string representing the
-    currency's code (e.g., "USD" for US Dollar, "EUR" for Euro).
+    Currency represents a specific currency used in financial transactions. 
+    Please note that only the first 4 characters are stored, which covers both 
+    traditional 3-letter currency codes (like USD, EUR, GBP) and
+    some extended codes (like USDT, USDC).
     """
    
-    var code: String 
+    comptime USD = Self("USD")
+    comptime EUR = Self("EUR")
+    comptime GBP = Self("GBP")
+    comptime JPY = Self("JPY")
+    comptime USDT = Self("USDT")
+    comptime USDC = Self("USDC")
+
+
+    var __code: String
 
     @implicit
     def __init__(out self, code: String):
-        self.code = code
-
+        self.__code = String(code)
+ 
+    # Reconstruct and write the string representation instead of the raw integer
     def write_to(self, mut writer: Some[Writer]):
-        writer.write(self.code)
+        self.__code.write_to(writer)
 
     def __rmatmul__(self, other: Float64) -> Amount:
         """Allow the use of the @ operator to create an Amount with the specified currency and value.
@@ -43,6 +49,8 @@ struct Currency(ImplicitlyCopyable, Writable, Equatable, Hashable):
         ```
         """
         return Amount(self, other)
+
+    
 
 trait CurrencyConverter(Deinitable & Movable):
 
@@ -192,7 +200,7 @@ def load_ecb_exchange_rates() raises -> Converter:
                 pass
 
     var all_rates = {currencies[idx]:rates[idx].copy() for idx in range(l)}
-    all_rates[EUR] = [ExchangeRate(Timestamp.MIN, 1.0)]
+    all_rates[Currency.EUR] = [ExchangeRate(Timestamp.MIN, 1.0)]
     return Converter(all_rates^)
 
 
@@ -205,7 +213,7 @@ struct Amount(ImplicitlyCopyable, Writable, Roundable, Equatable):
     var value: Float64
 
     @staticmethod
-    def zero(currency: Currency = USD) -> Self:
+    def zero(currency: Currency) -> Self:
         """Create a zero amount for the provided currency."""
         return Self(currency, 0.0)
 
@@ -271,7 +279,7 @@ struct Wallet(Copyable, Writable, Defaultable, Roundable, Sized):
         return Self(rounded^)
     
     def deposit(mut self, amount: Amount):
-        var k = amount.currency
+        ref k = amount.currency
         var v = self.balances.get(k, 0.0)
         self.balances[k] = v + amount.value
 

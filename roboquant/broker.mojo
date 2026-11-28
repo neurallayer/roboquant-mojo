@@ -13,7 +13,6 @@ from .money import (
     Amount,
     Currency,
     Converter,
-    USD,
     CurrencyConverter,
     NoConverter,
 )
@@ -57,7 +56,7 @@ struct SimBroker[T: CurrencyConverter](Broker):
 
     def __init__(
         out self,
-        deposit: Amount = Amount(USD, 100_000),
+        deposit: Amount = Amount(Currency.USD, 100_000),
         tz_offset_seconds: Int = 0,
         fee_pct: Float64 = 0.0,
         var currency_converter: Self.T = NoConverter(),

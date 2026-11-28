@@ -48,6 +48,7 @@ struct Timeframe(ImplicitlyCopyable, Writable, TrivialRegisterPassable):
     def split(self, duration: Duration) -> List[Timeframe]:
         """
         Split the Timeframe into smaller Timeframes of the specified duration.
+        The last returned timeframe contains the left-over.
 
         Args:
             duration: The duration of each smaller Timeframe.

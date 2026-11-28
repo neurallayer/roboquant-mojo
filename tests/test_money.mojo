@@ -1,7 +1,13 @@
 from std.testing import assert_equal, assert_true, assert_not_equal, assert_almost_equal, TestSuite
-from roboquant.money import Amount, Wallet, USD, EUR, Currency, load_ecb_exchange_rates
+from roboquant.money import Amount, Wallet, Currency, load_ecb_exchange_rates
 from roboquant.time import Timestamp
 
+comptime USD = Currency.USD
+comptime EUR = Currency.EUR
+comptime GBP = Currency.GBP
+comptime JPY = Currency.JPY
+comptime USDT = Currency.USDT
+comptime USDC = Currency.USDC
 
 def test_currency() raises:
     assert_equal(Currency("USD"), USD)
@@ -10,7 +16,7 @@ def test_currency() raises:
 def test_amount() raises:
     var amt1 = 100@USD
     var amt2 = Amount("USD", 100)
-    var amt3 = Amount(USD, 100)
+    var amt3 = Amount(Currency.USD, 100)
     assert_true(amt1 == amt2 == amt3)
 
     var amt4 = - amt2

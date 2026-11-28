@@ -117,14 +117,14 @@ struct Account(Writable, Copyable):
         """The total market value of the open positions."""
         var result = Wallet()
         for p in self.positions:
-            result.deposit(p.mkt_value())
+            result += p.mkt_value()
         return result^
 
     def exposure(self) -> Wallet:
         """The total market value of the open positions."""
         var result = Wallet()
         for p in self.positions:
-            result.deposit(p.exposure())
+            result += p.exposure()
         return result^
 
     def get_position_size(self, asset: Asset) -> Size:
@@ -174,7 +174,7 @@ struct Account(Writable, Copyable):
         """The total unrealized Profit & Loss hold by the open positions."""
         var result = Wallet()
         for p in self.positions:
-            result.deposit(p.pnl())
+            result += p.pnl()
         return result^
 
     def realized_pnl(self) -> Wallet:

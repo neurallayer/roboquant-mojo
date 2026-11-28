@@ -84,6 +84,20 @@ trait Strategy:
         ...
 
 
+def create_signals[
+    rate_fn: def (Asset, Float64) thin -> Optional[Float64]
+](event: Event, price_type: String = "DEFAULT") -> List[Signal]:
+    var signals: List[Signal] = []
+    for item in event.items.items():
+        var price = item.value.get_price(price_type)
+        if case .Some(rating) = rate_fn(item.key, price):
+            var signal = Signal(item.key, rating)
+            signals.append(signal^)
+
+    return signals^
+
+
+
 trait PricingStrategy(Strategy):
     """A pricing strategy that uses the price of an asset to generate signals.
     The price is obtained from the event using the price type returned by the
